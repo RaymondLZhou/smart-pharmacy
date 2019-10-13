@@ -1,2 +1,11 @@
-apt-get install python-pip python-numpy python-scipy python-opencv
-pip install SimpleCV
+#!/usr/bin/env bash
+# You should have Python 3 already installed
+# install numpy directly with pip
+pip3 install numpy
+# we need some dependencies that don't get installed with OpenCV for whatever reason
+apt-get install libatlas-base-dev
+apt-get install libjasper-dev
+apt-get install libqtgui4
+apt-get install libqt4-test
+# install OpenCV (cv2) directly with pip
+pip3 install opencv-python
