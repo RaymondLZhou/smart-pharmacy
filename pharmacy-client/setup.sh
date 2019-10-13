@@ -9,3 +9,6 @@ apt-get install libqtgui4
 apt-get install libqt4-test
 # install OpenCV (cv2) directly with pip
 pip3 install opencv-python
+# face recognition libraries for python
+pip3 install dlib
+pip3 install face_recognition
