@@ -10,21 +10,23 @@ import java.util.stream.Collectors;
  * Doctor, prescription, and fingerprint records have their own POJOs as well for ease of use (despite the fact that
  * the fingerprint is currently just a String).
  * Note that PrescriptionRecord is immutable - its ID field (the only field) cannot be changed. Everything else is
- * mutable.
+ * mutable, except the id field in UserRecord.
  */
 public class UserRecord {
     
+    public final int id;
     private String name;
     private List<DoctorRecord> doctors;
     private List<PrescriptionRecord> prescriptions;
     private FaceFingerprintRecord fingerprint;
     
-    public UserRecord(String name, List<DoctorRecord> doctors, List<PrescriptionRecord> prescriptions,
+    public UserRecord(int id, String name, List<DoctorRecord> doctors, List<PrescriptionRecord> prescriptions,
                       FaceFingerprintRecord fingerprint) {
         if (name == null || doctors == null || prescriptions == null || fingerprint == null
                 || doctors.contains(null) || prescriptions.contains(null)) {
             throw new NullPointerException("UserRecord cannot have any null fields");
         }
+        this.id = id;
         this.name = name;
         this.doctors = doctors;
         this.prescriptions = prescriptions;
