@@ -1,8 +1,134 @@
+#!/usr/bin/env python3
+
+# TODO
+# use asyncio library and async functionality which exists since Python 3.5
+# if python version is too old and can't be updated on the Raspberry Pi, find a workaround
+
+# these libraries come with python
+import logging
+import datetime
+import struct
+
+# please run setup.sh first to install these libraries
 import numpy as np
 import cv2
 import face_recognition
 
+def pack_fingerprint(fingerprint):
+    """
+    Takes the vector which is a face fingerprint and
+    creates a bytes object to represent it.
+    Some information will be lost.
+    """
+
+    # test our assumptions
+
+    if np.any(fingerprint >  1):raise ValueError('Fingerprint contains value greater than 1')
+    if np.any(fingerprint < -1):raise ValueError('Fingerprint contains value less than -1')
+    
+    # convert from 64-bit float in range [-1, 1] to 16-bit int in full range
+
+    # 1 - 2^-53 is the largest double value below 1
+    # by scaling by this much, we prevent the edge case of boundary number 1 which can overflow to -2^15 after scaling
+    scale = 1 - 2 ** -53
+
+    if scale >= 1:raise AssertionError('Fingerprint packing uses incorrect scaling factor')
+
+    # scale to get the 16-bit int range
+    scale *= 2 ** 15
+
+    # convert to the 16-bit int vector
+    values = np.array(np.floor(fingerprint * scale), dtype=np.int16)
+
+    # pack in bytes
+    # 128 values, 16-bit integer, little endian -> 256 bytes
+    result = struct.pack('<128h', *values)
+
+    return result
+
+def main_step(capture):
+    """
+    Contains the code for the main loop.
+    A return here will act as a continue in the loop.
+    """
+    # TODO for async rewrite
+    # wait for either user to press the button or a certain number of seconds to pass
+
+    logging.log(logging.DEBUG, 'Now trying to capture an image')
+
+    # capture an image
+    succeeded, pixels = capture.read()
+
+    logging.log(logging.DEBUG, 'Image capture completed, and it ' + ('succeeded' if succeeded else 'failed'))
+
+    # this line explains itself well
+    if not succeeded:return
+
+    # OpenCV uses BGR as its output format but we want RGB
+    pixels = cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)
+
+    logging.log(logging.DEBUG, 'Image colour channels changed to RGB')
+    
+    # find face locations in the image
+    face_boxes = face_recognition.face_locations(pixels, model='hog')
+    num_faces = len(face_boxes)
+
+    logging.log(logging.DEBUG, 'Found ' + str(num_faces) + 'faces in the image')
+
+    # no faces means nothing to do
+    if num_faces == 0:return
+
+    # TODO filter faces so only 1 is left, or else give up
+
+    # generate the 128-vector as face fingerprint
+    fingerprints = face_recognition.face_encodings(pixels, face_boxes)
+    fingerprint = fingerprints[0]
+
+    logging.log(logging.DEBUG, 'Face fingerprint was generated')
+
+    # pack the fingerprint as bytes
+    packed_fingerprint = pack_fingerprint(fingerprint)
+
+    logging.log(logging.INFO, 'Packed face fingerprint as ' + packed_fingerprint.hex())
+
+    # TODO communicate with the server and proceed to possibly dispense stuff
+
+def main():
+    """
+    Actual main function to be used in production.
+    """
+    # log timing information
+    logging.log(logging.INFO, 'Starting main function | Current UTC time is ' + str(datetime.datetime.utcnow()))
+    
+    # set up the video capture object
+    capture = cv2.VideoCapture(0)
+
+    # the main loop
+    while True:
+        # log some timing information
+        logging.log(logging.DEBUG, 'Starting the main loop | Current UTC time is ' + str(datetime.datetime.utcnow()))
+        # try block to prevent errors from breaking the program
+        try:
+            # special function represents the code of the main loop
+            main_step(capture)
+        except KeyboardInterrupt:
+            # the user intends to stop the program, so we respect this
+            logging.log(logging.INFO, 'Exiting main loop because a keyboard interrupt (SIGINT) was received')
+            raise KeyboardInterrupt
+        except Exception as exc:
+            # any other error must not break the program
+            logging.log(logging.ERROR, exc)
+
+    # get rid of the video capture object
+    capture.release()
+
+    # say bye bye
+    logging.log(logging.WARNING, 'Exiting main function, program is ending | Current UTC time is ' + str(datetime.datetime.utcnow())
+
 def main_test():
+    """
+    Previous main function left over from testing. Will be removed when it is no longer useful.
+    """
 
     print('start of program')
 
@@ -62,5 +188,6 @@ def main_test():
 
     print('bye bye!')
 
+# standard way to invoke main but only if this script is run as the program and not a library
 if __name__ == '__main__':
     main_test()
