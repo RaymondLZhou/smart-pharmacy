@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.text.Text?>
 
-<AnchorPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="ca.uwaterloo.arka.pharmacy.MainScene"
-            prefHeight="400.0" prefWidth="600.0">
-    
-</AnchorPane>
+<SplitPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="ca.uwaterloo.arka.pharmacy.MainScene"
+           dividerPositions="0.3"
+           prefHeight="800.0" prefWidth="1400.0">
+    <BorderPane>
+        <center>
+            <Text>Patient lists here!</Text>
+        </center>
+    </BorderPane>
+    <BorderPane>
+        <center>
+            <Text>Detailed info here!</Text>
+        </center>
+    </BorderPane>
+</SplitPane>
