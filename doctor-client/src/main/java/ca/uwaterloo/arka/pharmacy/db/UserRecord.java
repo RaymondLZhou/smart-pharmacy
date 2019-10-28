@@ -112,30 +112,38 @@ public class UserRecord {
      * A POJO representing the records in the "doctor" field in the DB documents.
      */
     public static class DoctorRecord {
-        private String name;
-        private int id;
+        private StringProperty nameProperty = new SimpleStringProperty();
+        private IntegerProperty idProperty = new SimpleIntegerProperty();
         
         public DoctorRecord(String name, int id) {
             if (name == null) throw new NullPointerException("cannot have null doctor name");
-            this.name = name;
-            this.id = id;
+            idProperty.set(id);
+            nameProperty.set(name);
         }
         
         public String getName() {
-            return name;
+            return nameProperty.get();
         }
         
         public void setName(String name) {
             if (name == null) throw new NullPointerException("cannot have null doctor name");
-            this.name = name;
+            nameProperty.set(name);
+        }
+        
+        public StringProperty nameProperty() {
+            return nameProperty;
         }
         
         public int getId() {
-            return id;
+            return idProperty.get();
         }
         
         public void setId(int id) {
-            this.id = id;
+            idProperty.set(id);
+        }
+        
+        public IntegerProperty idProperty() {
+            return idProperty;
         }
         
         @Override
@@ -143,19 +151,19 @@ public class UserRecord {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             DoctorRecord that = (DoctorRecord) o;
-            return id == that.id && name.equals(that.name);
+            return getId() == that.getId() && getName().equals(that.getName());
         }
         
         @Override
         public int hashCode() {
-            return Objects.hash(name, id);
+            return Objects.hash(getName(), getId());
         }
         
         @Override
         public String toString() {
             return "DoctorRecord{" +
-                    "name='" + name + '\'' +
-                    ", id=" + id +
+                    "name='" + getName() + '\'' +
+                    ", id=" + getId() +
                     '}';
         }
     }
@@ -195,20 +203,24 @@ public class UserRecord {
      * A POJO representing the face ID fingerprint field in the DB doc.
      */
     public static class FaceFingerprintRecord {
-        private String data;
+        private StringProperty dataProperty = new SimpleStringProperty();
         
         public FaceFingerprintRecord(String data) {
             if (data == null) throw new NullPointerException("cannot have null fingerprint data");
-            this.data = data;
+            dataProperty.set(data);
         }
         
         public String getData() {
-            return data;
+            return dataProperty.get();
         }
         
         public void setData(String data) {
             if (data == null) throw new NullPointerException("cannot have null fingerprint data");
-            this.data = data;
+            dataProperty.set(data);
+        }
+        
+        public StringProperty dataProperty() {
+            return dataProperty;
         }
         
         @Override
@@ -216,18 +228,18 @@ public class UserRecord {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             FaceFingerprintRecord that = (FaceFingerprintRecord) o;
-            return data.equals(that.data);
+            return getData().equals(that.getData());
         }
         
         @Override
         public int hashCode() {
-            return Objects.hash(data);
+            return Objects.hash(getData());
         }
         
         @Override
         public String toString() {
             return "FaceFingerprint{" +
-                    "data='" + data + '\'' +
+                    "data='" + getData() + '\'' +
                     '}';
         }
     }

@@ -10,15 +10,12 @@ import javafx.scene.text.Text;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * A custom component representing the patient cards displayed in the list box. Also the controller of that component.
  */
 public class PatientCard extends Pane {
-    
-    private Node view;
     
     private UserRecord record;
     
@@ -32,7 +29,7 @@ public class PatientCard extends Pane {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("PatientCard.fxml"));
         fxmlLoader.setController(this);
         try {
-            view = fxmlLoader.load(); // triggers us as the controller, initialize() will be called when it's ready
+            Node view = fxmlLoader.load(); // triggers us as the controller, initialize() will be called when it's ready
             getChildren().add(view);
         } catch (IOException e) {
             e.printStackTrace();
