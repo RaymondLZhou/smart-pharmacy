@@ -8,7 +8,7 @@
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="ca.uwaterloo.arka.pharmacy.ListController"
       prefHeight="600.0" prefWidth="200.0">
-    <ScrollPane VBox.vgrow="ALWAYS">
+    <ScrollPane vbarPolicy="ALWAYS" VBox.vgrow="ALWAYS">
         <VBox fx:id="patientList" spacing="2.0" />
     </ScrollPane>
     <Button onAction="#addNewPatient"

@@ -13,6 +13,19 @@ class TestingUserDao implements UserDao {
     private static final int PAGE_SIZE = 5;
     private List<UserRecord> records = new ArrayList<>();
     
+    TestingUserDao() {
+        // testing - add a user record
+        List<UserRecord.DoctorRecord> doctors = new ArrayList<>();
+        doctors.add(new UserRecord.DoctorRecord("Dr. Doe", 98765));
+        doctors.add(new UserRecord.DoctorRecord("Dr. Marlo", 4216241));
+        List<UserRecord.PrescriptionRecord> prescriptions = new ArrayList<>();
+        prescriptions.add(new UserRecord.PrescriptionRecord(15));
+        prescriptions.add(new UserRecord.PrescriptionRecord(95));
+        prescriptions.add(new UserRecord.PrescriptionRecord(1));
+        UserRecord.FaceFingerprintRecord fingerprint = new UserRecord.FaceFingerprintRecord("xX:tEsTiNgDaTa:Xx");
+        records.add(new UserRecord(123456, "John Smith", doctors, prescriptions, fingerprint));
+    }
+    
     @Override
     public void create(UserRecord user) {
         if (user == null) throw new NullPointerException("cannot have null user");
