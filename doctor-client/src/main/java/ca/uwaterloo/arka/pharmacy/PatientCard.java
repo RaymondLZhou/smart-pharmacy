@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
  */
 public class PatientCard extends Pane {
     
+    private Node view;
+    
     private UserRecord record;
     
     @FXML private Text patientNameText;
@@ -29,7 +31,7 @@ public class PatientCard extends Pane {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("PatientCard.fxml"));
         fxmlLoader.setController(this);
         try {
-            Node view = fxmlLoader.load(); // triggers us as the controller, initialize() will be called when it's ready
+            view = fxmlLoader.load(); // triggers us as the controller, initialize() will be called when it's ready
             getChildren().add(view);
         } catch (IOException e) {
             e.printStackTrace();
@@ -48,6 +50,10 @@ public class PatientCard extends Pane {
     
     public UserRecord getRecord() {
         return record;
+    }
+    
+    public Node getView() {
+        return view;
     }
     
 }

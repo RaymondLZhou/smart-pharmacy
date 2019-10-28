@@ -9,6 +9,8 @@
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="ca.uwaterloo.arka.pharmacy.DetailController"
+      fx:id="detailPaneRoot"
+      visible="false"
       prefHeight="Infinity" prefWidth="100000.0">
     <VBox VBox.vgrow="always">
         <Label text="Patient Detail" /> <!-- Title -->
@@ -32,8 +34,10 @@
     </VBox>
     <HBox VBox.vgrow="never">
         <Button text="Edit"
+                onAction="#edit"
                 prefWidth="100000.0" />
         <Button text="Delete"
+                onAction="#delete"
                 prefWidth="100000.0" />
     </HBox>
 </VBox>

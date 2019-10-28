@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * The controller class for the patient list on the left side.
  */
-public class ListController {
+public class ListController extends PaneController {
     
     @FXML private VBox patientList; // contains the graphical list of patients
     
@@ -51,15 +51,20 @@ public class ListController {
             
             for (UserRecord record : records) {
                 PatientCard card = new PatientCard(record);
-                patientList.getChildren().add(card);
+                addPatient(card);
             }
         }
     }
     
     @FXML
-    void addNewPatient() {
+    private void addNewPatient() {
         // TODO
         System.out.println("[ListController] Adding new patient");
+    }
+    
+    private void addPatient(PatientCard card) {
+        card.getView().setOnMouseClicked(e -> getDetailController().displayRecord(card.getRecord()));
+        patientList.getChildren().add(card);
     }
     
 }
