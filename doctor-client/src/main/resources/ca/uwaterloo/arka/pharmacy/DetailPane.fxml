@@ -3,6 +3,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -14,42 +15,44 @@
       fx:id="detailPaneRoot"
       visible="false"
       prefHeight="Infinity" prefWidth="100000.0">
-    <VBox VBox.vgrow="always">
-        <Label text="Patient Detail" /> <!-- Title -->
-        <HBox>
-            <Label text="Patient name:" />
-            <Text fx:id="nameText" />
-            <TextField fx:id="nameField" managed="false" visible="false" />
-        </HBox>
-        <HBox>
-            <Label text="Doctors:" />
-            <Text fx:id="doctorsText" />
-            <VBox fx:id="doctorsListContainer" managed="false" visible="false">
-                <ListView fx:id="doctorsList" />
-                <HBox>
-                    <Button text="+" />
-                    <Button text="-" />
-                </HBox>
-            </VBox>
-        </HBox>
-        <HBox>
-            <Label text="Prescription IDs:" />
-            <Text fx:id="prescriptionIdText" />
-            <VBox fx:id="prescriptionIdListContainer" managed="false" visible="false">
-                <ListView fx:id="prescriptionIdList" />
-                <HBox>
-                    <Button text="+" />
-                    <Button text="-" />
-                </HBox>
-            </VBox>
-        </HBox>
-        <!-- TODO actually have a method to input/display face recognition data other than string -->
-        <HBox>
-            <Label text="Face recognition data:" />
-            <Text fx:id="faceFingerprintDataText" />
-            <TextField fx:id="faceFingerprintDataField" managed="false" visible="false" />
-        </HBox>
-    </VBox>
+    <ScrollPane VBox.vgrow="always">
+        <VBox>
+            <Label text="Patient Detail" /> <!-- Title -->
+            <HBox>
+                <Label text="Patient name:" />
+                <Text fx:id="nameText" />
+                <TextField fx:id="nameField" managed="false" visible="false" />
+            </HBox>
+            <HBox>
+                <Label text="Doctors:" />
+                <Text fx:id="doctorsText" />
+                <VBox fx:id="doctorsListContainer" managed="false" visible="false">
+                    <ListView fx:id="doctorsList" editable="true" prefHeight="0" />
+                    <HBox>
+                        <Button text="+" onAction="#addDoctor" />
+                        <Button text="-" onAction="#removeSelectedDoctor" />
+                    </HBox>
+                </VBox>
+            </HBox>
+            <HBox>
+                <Label text="Prescription IDs:" />
+                <Text fx:id="prescriptionIdText" />
+                <VBox fx:id="prescriptionIdListContainer" managed="false" visible="false">
+                    <ListView fx:id="prescriptionIdList" editable="true" prefHeight="0" />
+                    <HBox>
+                        <Button text="+" onAction="#addPrescription" />
+                        <Button text="-" onAction="#removeSelectedPrescription" />
+                    </HBox>
+                </VBox>
+            </HBox>
+            <!-- TODO actually have a method to input/display face recognition data other than string -->
+            <HBox>
+                <Label text="Face recognition data:" />
+                <Text fx:id="faceFingerprintDataText" />
+                <TextField fx:id="faceFingerprintDataField" managed="false" visible="false" />
+            </HBox>
+        </VBox>
+    </ScrollPane>
     <HBox VBox.vgrow="never">
         <Button fx:id="editBtn"
                 text="Edit"

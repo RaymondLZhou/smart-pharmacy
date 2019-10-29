@@ -7,7 +7,9 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.text.Text;
+import javafx.util.converter.IntegerStringConverter;
 
 import java.util.stream.Collectors;
 
@@ -43,6 +45,21 @@ public class DetailController extends PaneController {
     private boolean editing = false;
     
     private UserRecord record = null;
+    
+    @FXML
+    private void initialize() {
+        // the ListViews need editable cell factories
+        doctorsList.setCellFactory(TextFieldListCell.forListView());
+        // TODO catch the NumberFormatException when the user tries to input a non-integer
+        prescriptionIdList.setCellFactory(TextFieldListCell.forListView(new IntegerStringConverter()));
+        
+        // do a stupid thing so that the list views have the right height
+        final int ITEM_HEIGHT = 26;
+        doctorsList.prefHeightProperty().bind(Bindings.size(doctorsList.getItems())
+                .multiply(ITEM_HEIGHT).add(ITEM_HEIGHT));
+        prescriptionIdList.prefHeightProperty().bind(Bindings.size(prescriptionIdList.getItems())
+                .multiply(ITEM_HEIGHT).add(ITEM_HEIGHT));
+    }
     
     /**
      * Display and allow editing of the given record. Pass null in order to clear the display pane.
@@ -96,6 +113,27 @@ public class DetailController extends PaneController {
                 .collect(Collectors.toList()));
         
         changeMode(true);
+    }
+    
+    @FXML
+    void addDoctor() {
+        // TODO preserve doctor IDs
+        doctorsList.getItems().add("New Doctor");
+    }
+    
+    @FXML
+    void removeSelectedDoctor() {
+        doctorsList.getItems().remove(doctorsList.getSelectionModel().getSelectedIndex());
+    }
+    
+    @FXML
+    void addPrescription() {
+        prescriptionIdList.getItems().add(0); // 0 is default prescription id
+    }
+    
+    @FXML
+    void removeSelectedPrescription() {
+        prescriptionIdList.getItems().remove(prescriptionIdList.getSelectionModel().getSelectedIndex());
     }
     
     @FXML
