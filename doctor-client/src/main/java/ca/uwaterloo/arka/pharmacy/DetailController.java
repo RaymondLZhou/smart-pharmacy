@@ -1,9 +1,11 @@
 package ca.uwaterloo.arka.pharmacy;
 
+import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
@@ -11,6 +13,8 @@ import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
 
+import java.io.IOException;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +25,7 @@ import java.util.stream.Collectors;
  * upon hitting the exit button.
  */
 // TODO - a selection of doctors, also prescriptions rather than raw ID
+// TODO - some save status indicator
 public class DetailController extends PaneController {
     
     @FXML private Node detailPaneRoot;
@@ -184,7 +189,39 @@ public class DetailController extends PaneController {
     @FXML
     private void save() {
         if (record == null || !editing) return;
-        // TODO
+        
+        // update the record (and therefore the displaying stuff) with the editing data
+        record.setName(nameField.getText());
+        record.getFingerprint().setData(faceFingerprintDataField.getText());
+        
+        record.getDoctors().clear();
+        Random idGen = new Random();
+        for (String doctorName : doctorsList.getItems()) {
+            // TODO don't just randomly generate an ID, actually preserve it
+            UserRecord.DoctorRecord doctorRecord = new UserRecord.DoctorRecord(doctorName, idGen.nextInt());
+            record.getDoctors().add(doctorRecord);
+        }
+        
+        record.getPrescriptions().clear();
+        for (int prescriptionId : prescriptionIdList.getItems()) {
+            record.getPrescriptions().add(new UserRecord.PrescriptionRecord(prescriptionId));
+        }
+        
+        // Publish it
+        UserDao dao = UserDao.newDao();
+        try {
+            dao.update(record);
+        } catch (IOException e) {
+            System.err.println("[DetailController] Could not update record of patient: " + record.getName());
+            e.printStackTrace();
+            
+            // let the user know with an alert
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Could not publish changes to database. Your changes are saved locally but will reset upon " +
+                    "restarting the application, and will not appear in the pharmacy machine. Click 'save' again to " +
+                    "retry publishing changes.");
+            alert.show();
+        }
     }
     
 }
