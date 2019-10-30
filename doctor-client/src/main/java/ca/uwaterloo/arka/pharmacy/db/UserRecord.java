@@ -100,7 +100,8 @@ public class UserRecord {
     @Override
     public String toString() {
         return "UserRecord{" +
-                "name='" + getName() + '\'' +
+                "id='" + id + '\'' +
+                ", name='" + getName() + '\'' +
                 ", doctors=" + getDoctors().stream().map(DoctorRecord::toString).collect(Collectors.joining(", ")) +
                 ", prescriptions=" + getPrescriptions().stream().map(PrescriptionRecord::toString)
                     .collect(Collectors.joining(", ")) +

@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="ca.uwaterloo.arka.pharmacy.ListController"
       prefHeight="600.0" prefWidth="200.0">
-    <ScrollPane vbarPolicy="ALWAYS" VBox.vgrow="ALWAYS">
+    <HBox VBox.vgrow="never">
+        <Label text="Search:" HBox.hgrow="never" />
+        <TextField fx:id="searchField" HBox.hgrow="always" />
+    </HBox>
+    <ScrollPane vbarPolicy="ALWAYS" VBox.vgrow="always">
         <VBox fx:id="patientList" spacing="2.0" />
     </ScrollPane>
     <Button onAction="#addNewPatient"
             text="Add New Patient"
             prefWidth="Infinity"
-            VBox.vgrow="NEVER" />
+            VBox.vgrow="never" />
 </VBox>

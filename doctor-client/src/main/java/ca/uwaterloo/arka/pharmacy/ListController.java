@@ -4,8 +4,8 @@ import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Text;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,47 +15,97 @@ import java.util.UUID;
 /**
  * The controller class for the patient list on the left side.
  */
+// TODO some form of pagination
 public class ListController extends PaneController {
     
     @FXML private VBox patientList; // contains the graphical list of patients
     
+    @FXML private TextField searchField;
+    
     @FXML
     void initialize() {
-        // Add all the users from the database
+        getAllUsersFromDatabase();
+        
+        // setup searching
+        searchField.textProperty().addListener(((observable, oldValue, newValue) -> searchForUsers(newValue)));
+    }
+    
+    private void searchForUsers(String search) { // null or empty or blank for all users
+        // search for users with that name and set that as the list box
+        if (search == null || search.isBlank()) {
+            getAllUsersFromDatabase();
+            return;
+        }
+        
+        // Get the records
+        UserDao dao = UserDao.newDao();
+        List<UserRecord> records;
+        try {
+            records = dao.searchByName(search);
+        } catch (IOException e) {
+            System.err.println("[ListController] Could not search for users by string: " + search);
+            e.printStackTrace();
+            
+            Alert error = new Alert(Alert.AlertType.ERROR,
+                    "Error: could not access database (failed to search for '" + search + "')");
+            error.show();
+            
+            return;
+        }
+        
+        // Clear the box and display them
+        patientList.getChildren().clear();
+        for (UserRecord record : records) {
+            PatientCard card = new PatientCard(record);
+            addPatient(card);
+        }
+    }
+    
+    private void getAllUsersFromDatabase() {
+        // Get all the users with the annoying pagination thing
         UserDao dao = UserDao.newDao();
         
         int numPages;
         try {
             numPages = dao.getNumPages();
         } catch (IOException e) {
-            System.err.println("[ListController] Could not get number of pages:");
+            System.err.println("[ListController] Could not get number of pages");
             e.printStackTrace();
-            
+
             // Add an error message to the patient list box
-            Text error = new Text("Error: could not access database (failed to get number of pages)");
-            patientList.getChildren().add(error);
-            
+            Alert error = new Alert(Alert.AlertType.ERROR,
+                    "Error: could not access database (failed to get number of pages)");
+            error.show();
+
             return;
         }
-        
-        // Fetch all the records and add them as patient cards to the list
+
+        // Fetch all the records
+        List<UserRecord> allRecords = new ArrayList<>();
         for (int p = 0; p < numPages; ++p) {
             List<UserRecord> records;
             try {
                 records = dao.getAllSortedAlphabetically(p);
+                allRecords.addAll(records);
             } catch (IOException e) {
                 System.err.println("[ListController] Could not get records:");
                 e.printStackTrace();
+
                 // Another informative error message
-                Text error = new Text("Error: could not access database (failed to get patient records)");
-                patientList.getChildren().add(error);
-                continue;
+                Alert error = new Alert(Alert.AlertType.ERROR,
+                        "Error: could not access database (failed to get patient records)");
+                error.show();
+                
+                break;
             }
-            
-            for (UserRecord record : records) {
-                PatientCard card = new PatientCard(record);
-                addPatient(card);
-            }
+        }
+        
+        // Clear the list and add all the new ones
+        patientList.getChildren().clear();
+        
+        for (UserRecord record : allRecords) {
+            PatientCard card = new PatientCard(record);
+            addPatient(card);
         }
     }
     

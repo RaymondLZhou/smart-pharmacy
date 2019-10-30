@@ -11,9 +11,9 @@ import java.util.stream.Collectors;
 class TestingUserDao implements UserDao {
     
     private static final int PAGE_SIZE = 5;
-    private List<UserRecord> records = new ArrayList<>();
+    private static List<UserRecord> records = new ArrayList<>();
     
-    TestingUserDao() {
+    static {
         // testing - add a user record
         List<UserRecord.DoctorRecord> doctors = new ArrayList<>();
         doctors.add(new UserRecord.DoctorRecord("Dr. Doe", 98765));
@@ -48,7 +48,7 @@ class TestingUserDao implements UserDao {
     
     @Override
     public List<UserRecord> searchByName(String name) {
-        return records.stream().filter(record -> record.getName().equals(name)).collect(Collectors.toList());
+        return records.stream().filter(record -> record.getName().contains(name)).collect(Collectors.toList());
     }
     
     @Override
