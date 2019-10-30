@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldListCell;
@@ -69,7 +70,7 @@ public class DetailController extends PaneController {
     /**
      * Display and allow editing of the given record. Pass null in order to clear the display pane.
      */
-    public void displayRecord(UserRecord record) {
+    void displayRecord(UserRecord record) {
         if (this.record != null) {
             // Unbind everything from the last one
             nameText.textProperty().unbindBidirectional(this.record.nameProperty());
@@ -183,7 +184,29 @@ public class DetailController extends PaneController {
     @FXML
     private void delete() {
         if (record == null || editing) return;
-        // TODO
+        
+        // are they sure?
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this user record?");
+        alert.showAndWait().filter(response -> response == ButtonType.OK).ifPresent(response -> {
+            // delete it - first do it in the database so we don't go out of sync
+            UserDao dao = UserDao.newDao();
+            try {
+                dao.delete(record);
+            } catch (IOException e) {
+                System.err.println("[DetailController] Could not delete record with id " + record.id);
+                e.printStackTrace();
+                
+                // tell the user
+                Alert error = new Alert(Alert.AlertType.ERROR, "Could not delete user record.");
+                error.show();
+                
+                return;
+            }
+            
+            // now delete it from everything else
+            getListController().removePatientCard(record);
+            displayRecord(null);
+        });
     }
     
     @FXML

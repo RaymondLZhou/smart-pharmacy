@@ -62,6 +62,18 @@ public class ListController extends PaneController {
         System.out.println("[ListController] Adding new patient");
     }
     
+    /** Remove the card with the following record */
+    void removePatientCard(UserRecord recordToRemove) {
+        if (recordToRemove == null) throw new NullPointerException("cannot remove null card");
+        for (int i = 0; i < patientList.getChildren().size(); ++i) {
+            PatientCard card = (PatientCard) patientList.getChildren().get(i);
+            if (card.getRecord().id == recordToRemove.id) {
+                patientList.getChildren().remove(i);
+                break;
+            }
+        }
+    }
+    
     private void addPatient(PatientCard card) {
         card.getView().setOnMouseClicked(e -> getDetailController().displayRecord(card.getRecord()));
         patientList.getChildren().add(card);
