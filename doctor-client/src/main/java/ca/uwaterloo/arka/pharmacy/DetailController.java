@@ -72,11 +72,16 @@ public class DetailController extends PaneController {
      */
     void displayRecord(UserRecord record) {
         if (this.record != null) {
+            if (editing) {
+                // can't be in edit mode now
+                exit();
+            }
+            
             // Unbind everything from the last one
-            nameText.textProperty().unbindBidirectional(this.record.nameProperty());
-            faceFingerprintDataText.textProperty().unbindBidirectional(this.record.getFingerprint().dataProperty());
+            nameText.textProperty().unbind();
             doctorsText.textProperty().unbind();
             prescriptionIdText.textProperty().unbind();
+            faceFingerprintDataText.textProperty().unbind();
         }
         
         this.record = record;
@@ -87,8 +92,8 @@ public class DetailController extends PaneController {
         }
         
         // Bind all the fields
-        nameText.textProperty().bindBidirectional(record.nameProperty());
-        faceFingerprintDataText.textProperty().bindBidirectional(record.getFingerprint().dataProperty());
+        nameText.textProperty().bind(record.nameProperty());
+        faceFingerprintDataText.textProperty().bind(record.getFingerprint().dataProperty());
         
         doctorsText.textProperty().bind(Bindings.createStringBinding(
                 () -> record.getDoctors().stream()
@@ -103,7 +108,7 @@ public class DetailController extends PaneController {
     }
     
     @FXML
-    private void edit() {
+    public void edit() {
         if (record == null || editing) return;
         
         // copy the record stuff into the editing stuff

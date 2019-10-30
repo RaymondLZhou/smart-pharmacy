@@ -3,11 +3,14 @@ package ca.uwaterloo.arka.pharmacy;
 import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The controller class for the patient list on the left side.
@@ -58,8 +61,31 @@ public class ListController extends PaneController {
     
     @FXML
     private void addNewPatient() {
-        // TODO
-        System.out.println("[ListController] Adding new patient");
+        // strategy: make new record, save it immediately, send it to detail pane already open to edit
+        UUID uuid = UUID.randomUUID();
+        UserRecord newRecord = new UserRecord(uuid.hashCode(), "New User", new ArrayList<>(), new ArrayList<>(),
+                new UserRecord.FaceFingerprintRecord(""));
+        
+        // gotta save it before we can edit it
+        UserDao dao = UserDao.newDao();
+        try {
+            dao.create(newRecord);
+        } catch (IOException e) {
+            System.err.println("[ListController] Could not create new user record");
+            e.printStackTrace();
+            
+            Alert error = new Alert(Alert.AlertType.ERROR, "Could not register a new user with the database.");
+            error.show();
+            
+            return;
+        }
+        
+        // we're good
+        PatientCard newCard = new PatientCard(newRecord);
+        addPatient(newCard);
+        
+        getDetailController().displayRecord(newRecord);
+        getDetailController().edit();
     }
     
     /** Remove the card with the following record */
