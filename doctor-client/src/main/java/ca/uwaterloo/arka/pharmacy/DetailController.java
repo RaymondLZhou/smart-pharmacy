@@ -93,11 +93,11 @@ public class DetailController extends PaneController {
         doctorsText.textProperty().bind(Bindings.createStringBinding(
                 () -> record.getDoctors().stream()
                         .map(UserRecord.DoctorRecord::getName)
-                        .collect(Collectors.joining(", "))));
+                        .collect(Collectors.joining(", ")), record.doctorsProperty()));
         prescriptionIdText.textProperty().bind(Bindings.createStringBinding(
                 () -> record.getPrescriptions().stream()
                         .map(prescription -> Integer.toString(prescription.id))
-                        .collect(Collectors.joining(", "))));
+                        .collect(Collectors.joining(", ")), record.prescriptionsProperty()));
         
         detailPaneRoot.setVisible(true);
     }
@@ -129,7 +129,9 @@ public class DetailController extends PaneController {
     
     @FXML
     void removeSelectedDoctor() {
-        doctorsList.getItems().remove(doctorsList.getSelectionModel().getSelectedIndex());
+        if (!doctorsList.getSelectionModel().isEmpty()) {
+            doctorsList.getItems().remove(doctorsList.getSelectionModel().getSelectedIndex());
+        }
     }
     
     @FXML
@@ -139,7 +141,9 @@ public class DetailController extends PaneController {
     
     @FXML
     void removeSelectedPrescription() {
-        prescriptionIdList.getItems().remove(prescriptionIdList.getSelectionModel().getSelectedIndex());
+        if (!prescriptionIdList.getSelectionModel().isEmpty()) {
+            prescriptionIdList.getItems().remove(prescriptionIdList.getSelectionModel().getSelectedIndex());
+        }
     }
     
     @FXML

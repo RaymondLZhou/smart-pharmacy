@@ -45,7 +45,7 @@ public class PatientCard extends Pane {
         doctorsNamesText.textProperty().bind(Bindings.createStringBinding(
                 () -> record.getDoctors().stream()
                         .map(UserRecord.DoctorRecord::getName)
-                        .collect(Collectors.joining(", "))));
+                        .collect(Collectors.joining(", ")), record.doctorsProperty()));
     }
     
     public UserRecord getRecord() {
