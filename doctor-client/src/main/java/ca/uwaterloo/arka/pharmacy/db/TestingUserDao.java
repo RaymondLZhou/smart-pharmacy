@@ -11,7 +11,20 @@ import java.util.stream.Collectors;
 class TestingUserDao implements UserDao {
     
     private static final int PAGE_SIZE = 5;
-    private List<UserRecord> records = new ArrayList<>();
+    private static List<UserRecord> records = new ArrayList<>();
+    
+    static {
+        // testing - add a user record
+        List<UserRecord.DoctorRecord> doctors = new ArrayList<>();
+        doctors.add(new UserRecord.DoctorRecord("Dr. Doe", 98765));
+        doctors.add(new UserRecord.DoctorRecord("Dr. Marlo", 4216241));
+        List<UserRecord.PrescriptionRecord> prescriptions = new ArrayList<>();
+        prescriptions.add(new UserRecord.PrescriptionRecord(15));
+        prescriptions.add(new UserRecord.PrescriptionRecord(95));
+        prescriptions.add(new UserRecord.PrescriptionRecord(1));
+        UserRecord.FaceFingerprintRecord fingerprint = new UserRecord.FaceFingerprintRecord("xX:tEsTiNgDaTa:Xx");
+        records.add(new UserRecord(123456, "John Smith", doctors, prescriptions, fingerprint));
+    }
     
     @Override
     public void create(UserRecord user) {
@@ -35,7 +48,7 @@ class TestingUserDao implements UserDao {
     
     @Override
     public List<UserRecord> searchByName(String name) {
-        return records.stream().filter(record -> record.getName().equals(name)).collect(Collectors.toList());
+        return records.stream().filter(record -> record.getName().contains(name)).collect(Collectors.toList());
     }
     
     @Override
