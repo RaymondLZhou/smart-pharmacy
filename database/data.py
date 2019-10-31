@@ -1,6 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+import json
 
 #Class for user entries
 class User():
@@ -11,12 +12,6 @@ class User():
         self._prescription = prescriptions
         self._fingerprint = fingerprint
         self._record = record
-
-#Class for Doctor items for the doctor attribute in user
-class Doctor():
-    def __init__(self, id, name):
-        self._id = id
-        self._name = name
 
 #Class for Prescription items for the prescription attribute in user
 class Prescription():
@@ -48,20 +43,44 @@ class Firebase_Server():
         self._useref.child(user._id).set({
             'name': user._name,
             'doctors': user._doctors,
-            'prescriptions': user._prescription,
+            'prescriptions': {},
             'fingerprint': user._fingerprint,
-            'record': user._record
+            'record': {},
         })
+        for pres in user._prescription:
+            self._useref.child(user._id).child('prescriptions').child("DIN_" + pres._din).set({
+                'type': pres._type,
+                'din': int(pres._din),
+                'timestamp': int(pres._timestamp),
+                'expires': int(pres._expires),
+            })
+        for record in user._record:
+            self._useref.child(user._id).child('record').push().set({
+                'dins': record._dins,
+                'timestamp': int(record._timestamp),
+            })
+
 
     def createPrescriptions (self, id, prescriptions):
         self._useref.child(id).update({
-            'prescriptions': prescriptions
+            'prescriptions': {}
         })
+        for pres in prescriptions:
+            self._useref.child(id).child('prescriptions').child("DIN_" + pres._din).set({
+                'type': pres._type,
+                'din': int(pres._din),
+                'timestamp': int(pres._timestamp),
+                'expires': int(pres._expires),
+            })
 
     def updatePrescriptions (self, id, prescriptions):
-        self._useref.child(id).update({
-            'prescriptions': prescriptions
-        })
+        for pres in prescriptions:
+            self._useref.child(id).child('prescriptions').child("DIN_" + pres._din).set({
+                'type': pres._type,
+                'din': int(pres._din),
+                'timestamp': int(pres._timestamp),
+                'expires': int(pres._expires),
+            })
 
     def getIDfromFingerprint (self, fingerprint):
         id = self._useref.order_by_child("fingerprint").equal_to(fingerprint).get()
@@ -80,11 +99,11 @@ class Firebase_Server():
         return prescriptions
 
     def updateRecords (self, id, records):
-        dinref = self._useref.child(id).child('record').get()
-        dinref = dinref + records
-        self._useref.child(id).update({
-            "record": dinref
-        })
+        for rec in records:
+            self._useref.child(id).child('record').push().set({
+                'dins': rec._dins,
+                'timestamp': int(rec._timestamp),
+            })
 
     def getUserInfo (self, id):
         userInfo = self._useref.child(id).get()
@@ -93,12 +112,17 @@ class Firebase_Server():
 #Sample Code
 '''
 app = Firebase_Server()
-app.createUser(User("adlskfj", "name", ["doctor1", "doctor2"], ["prescription1", "prescription2"], "fingerprint", ["aldsfkj", "asdlfkj"]))
-print(app.getIDfromFingerprint("fingerprint"))
-app.updatePrescriptions("id", ["a", "b", "c"])
-app.deleteUser("id")
-print(app.getPrescriptions("adlskfj"))
-print(app.getUsers())
-print(app.updateRecords("adlskfj", ["rasdf", "reasdf"]))
-print (app.getUserInfo("adlskfj"))
+pres = Prescription("big", "111", "222", "333")
+pres2 = Prescription("pharm", "222", "333", "444")
+record = Record(["111","222"], "222")
+record2 = Record(["222","333"], "444")
+app.createUser(User("adlskfj", "name", ["doctor1", "doctor2"], [pres], "fingerprint", [record]))
+#print(app.getIDfromFingerprint("fingerprint"))
+app.updatePrescriptions("adlskfj", [pres2])
+#app.deleteUser("adlskfj")
+#print(app.getPrescriptions("adlskfj"))
+#print(app.getUsers())
+print(app.updateRecords("adlskfj", [record2]))
+#print (app.getUserInfo("adlskfj"))
 '''
+
