@@ -12,3 +12,5 @@ pip3 install opencv-python
 # face recognition libraries for python
 pip3 install dlib
 pip3 install face_recognition
+# aiohttp for asynchronous access to the web api
+pip3 install aiohttp

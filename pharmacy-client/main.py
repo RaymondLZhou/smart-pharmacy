@@ -1,18 +1,38 @@
 #!/usr/bin/env python3
 
-# TODO
-# use asyncio library and async functionality which exists since Python 3.5
-# if python version is too old and can't be updated on the Raspberry Pi, find a workaround
+"""
+The main program that will be run on the Raspberry Pi,
+which is the controller for the pharmacy client.
+DINs of drugs on this pharmacy should be specified in din.cfg
+"""
 
 # these libraries come with python
 import logging
 import datetime
 import struct
+import asyncio
+import json
+import base64
 
 # please run setup.sh first to install these libraries
 import numpy as np
 import cv2
 import face_recognition
+import aiohttp
+
+# constant: endpoint for the web API
+api_endpoint = 'https://example.com/arka'
+# constant: current api version
+api_version = '0'
+
+# local drug database
+din_to_motor = {}
+
+async def dispense(session, din):
+    """
+    Try to dispense a drug.
+    """
+    motor = din_to_motor[din]
 
 def pack_fingerprint(fingerprint):
     """
@@ -46,13 +66,14 @@ def pack_fingerprint(fingerprint):
 
     return result
 
-def main_step(capture):
+async def main_step(capture):
     """
     Contains the code for the main loop.
     A return here will act as a continue in the loop.
     """
-    # TODO for async rewrite
     # wait for either user to press the button or a certain number of seconds to pass
+
+    await asyncio.sleep(1)
 
     logging.log(logging.DEBUG, 'Now trying to capture an image')
 
@@ -91,9 +112,45 @@ def main_step(capture):
 
     logging.log(logging.INFO, 'Packed face fingerprint as ' + packed_fingerprint.hex())
 
-    # TODO communicate with the server and proceed to possibly dispense stuff
+    async with aiohttp.ClientSession() as session:
 
-def main():
+        logging.log(logging.DEBUG, 'HTTP session started')
+
+        data_send = {
+            version: api_version,
+            fingerprint: base64.b64encode(packed_fingerprint)
+            }
+
+        data_response = None
+
+        async with session.get(
+            api_endpoint + '/user/pharmacy_get',
+            json = data_send
+            ) as response:
+
+            logging.log(logging.DEBUG, 'Sent face fingerprint to authenticate')
+
+            data_response = await response.json()
+
+            logging.log(logging.DEBUG, 'Decoded response data as JSON')
+
+        if data_response is not None and data.get('success', None) and data['version'] == api_version:
+
+            logging.log(logging.DEBUG, 'Authenticated and prescription data acquired')
+
+            auth_token = data['id']
+
+            for pres in data['prescriptions']:
+
+                din = pres['din']
+
+                if din in din_to_motor:
+
+                    logging.log(logging.INFO, 'Attempting to dispense drug with DIN ' + din)
+
+                    await dispense(session, din)
+
+async def main_async():
     """
     Actual main function to be used in production.
     """
@@ -110,7 +167,7 @@ def main():
         # try block to prevent errors from breaking the program
         try:
             # special function represents the code of the main loop
-            main_step(capture)
+            await main_step(capture)
         except KeyboardInterrupt:
             # the user intends to stop the program, so we respect this
             logging.log(logging.INFO, 'Exiting main loop because a keyboard interrupt (SIGINT) was received')
@@ -123,7 +180,22 @@ def main():
     capture.release()
 
     # say bye bye
-    logging.log(logging.WARNING, 'Exiting main function, program is ending | Current UTC time is ' + str(datetime.datetime.utcnow())
+    logging.log(logging.WARNING, 'Exiting main function, program is ending | Current UTC time is ' + str(datetime.datetime.utcnow()))
+
+def main():
+    """
+    Entry point to the program.
+    Will first read in the local database from the config file.
+    Redirects to main_async.
+    """
+    global din_to_motor
+                
+    with open('din.cfg','r') as file:
+        for line in file:
+                din, motor = line.strip().split()
+                din_to_motor[din] = motor
+                
+    asyncio.run(main_async())
 
 def main_test():
     """
