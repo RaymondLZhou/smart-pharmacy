@@ -15,64 +15,35 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
 
-class DbUserDao implements UserDao{
+class DbUserDao implements UserDao {
     
-    private static FirebaseApp defaultApp = null;
-    private static FirebaseDatabase database = null;
-    
-    private DatabaseReference ref;
-    
-    DbUserDao() throws IOException {
-        if (defaultApp == null && database == null) {
-            InputStream serviceAccount = getClass().getResourceAsStream(
-                    "/ca/uwaterloo/arka/pharmacy/db/serviceAccountKey.json");
-            if (serviceAccount == null) throw new IOException("No key file");
-
-            FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .setDatabaseUrl("https://smart-pharmacy-f818a.firebaseio.com")
-                    .build();
-            defaultApp = FirebaseApp.initializeApp(options);
-            System.out.println("[DbUserDao] Initialized Firebase app of " + defaultApp.getName());
-            database = FirebaseDatabase.getInstance();
-        }
+    public void initialize() throws IOException {
+        InputStream serviceAccount = DbUserDao.class.getResourceAsStream(
+                "/ca/uwaterloo/arka/pharmacy/db/serviceAccountKey.json");
+        if (serviceAccount == null) throw new IOException("No key file");
         
-        ref = database.getReference("/arka/");
+        FirebaseOptions options = new FirebaseOptions.Builder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .setDatabaseUrl("https://smart-pharmacy-f818a.firebaseio.com")
+                .build();
+        FirebaseApp.initializeApp(options);
+        System.out.println("[DbUserDao] Initialized Firebase");
     }
     
     /**
      * Create the supplied user record in the DB.
      */
     @Override
-    public void create(UserRecord user) {
-        //DatabaseReference usersRef = ref.child("users");
-        //Map<String, UserRecord> users = new HashMap<>();
-        //users.put(Integer.toString(user.id), user);
-        database.goOnline();
-        DatabaseReference connectedRef = database.getReference(".info/connected");
-        connectedRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                boolean connected = snapshot.getValue(Boolean.class);
-                if (connected) {
-                    System.out.println("connected");
-                } else {
-                    System.out.println("not connected");
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-                System.out.println("cancelled");
+    public void create(UserRecord user, Runnable callback, Consumer<String> errorCb) {
+        FirebaseDatabase.getInstance().goOnline();
+        FirebaseDatabase.getInstance().getReference("/arka/user/" + user.id).setValue(user, (error, ref) -> {
+            if (error == null) {
+                System.out.println("[DbUserDao] Successfully created user " + user.id);
+                Platform.runLater(callback);
+            } else {
+                Platform.runLater(() -> errorCb.accept(error.getMessage()));
             }
         });
-        try {
-            database.getReference("/arka/user/" + user.id).setValue(user, (error, ref1) -> {
-                System.out.println("oh darn");
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
     
     /**
@@ -81,7 +52,7 @@ class DbUserDao implements UserDao{
      */
     @Override
     public void getAllSortedAlphabetically(Consumer<UserRecord> callback, Consumer<String> errorCb) {
-        Query query = database.getReference("/arka/user").orderByChild("name");
+        Query query = FirebaseDatabase.getInstance().getReference("/arka/user").orderByChild("name");
         doSearch(query, callback, errorCb);
     }
     
@@ -92,64 +63,69 @@ class DbUserDao implements UserDao{
     public void searchByName(String name, Consumer<UserRecord> callback, Consumer<String> errorCb) {
         // the startAt/endAt trick is to get all users whose names start with name
         // unicode #ffff is the 'last' character so all names starting with name will be between name and name + that
-        Query query = database.getReference("/arka/user").orderByChild("name").startAt(name).endAt(name + "\uffff");
+        Query query = FirebaseDatabase.getInstance().getReference("/arka/user").orderByChild("name")
+                .startAt(name).endAt(name + "\uffff");
         doSearch(query, callback, errorCb);
     }
     
     private void doSearch(Query query, Consumer<UserRecord> callback, Consumer<String> errorCb) {
+        FirebaseDatabase.getInstance().goOnline();
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 try {
-                    System.out.println("Hello");
-                    System.out.println(snapshot.getKey());
+                    System.out.println("[DbUserDao] Retrieved from database:");
                     for (DataSnapshot record : snapshot.getChildren()) {
-                        System.out.println(record.getValue(UserRecord.class));
-                        Platform.runLater(() -> callback.accept(record.getValue(UserRecord.class)));
+                        UserRecord userRecord = record.getValue(UserRecord.class);
+                        System.out.println(userRecord);
+                        Platform.runLater(() -> callback.accept(userRecord));
                     }
                 } catch (Exception e) {
+                    // for not silencing errors
                     e.printStackTrace();
                 }
             }
 
             @Override
             public void onCancelled(DatabaseError error) {
-                errorCb.accept(error.getMessage());
+                Platform.runLater(() -> errorCb.accept(error.getMessage()));
             }
         });
     }
     
     /**
-     * Update the user record on the DB with the supplied user record, or throw IOException if we can't.
-     * The record to be updated can, I think, be referenced by the id field in UserRecord.
+     * Update the user record on the DB with the supplied user record, or call the error callback.
      */
     @Override
-    public void update(UserRecord user) throws IOException {
+    public void update(UserRecord user, Runnable callback, Consumer<String> errorCb) {
         //Overwrites current user by creating a new entry
-        database.goOnline();
-        DatabaseReference usersRef = database.getReference("/arka/user/" + user.id);
-        try {
-            usersRef.setValue(user, (error, ref1) -> {
-                System.out.println("updated"); 
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        // TODO Error Implementation can be done later.
+        FirebaseDatabase.getInstance().goOnline();
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("/arka/user/" + user.id);
+        usersRef.setValue(user, (error, ref) -> {
+            if (error == null) {
+                System.out.println("Successfully updated user " + user.id);
+                Platform.runLater(callback);
+            } else {
+                Platform.runLater(() -> errorCb.accept(error.getMessage()));
+            }
+        });
     }
     
     /**
-     * Delete the user record on the DB (found by ID).
+     * Delete the user record on the DB (found by ID), or call the error callback.
      */
     @Override
-    public void delete(UserRecord record) throws IOException {
-        database.goOnline();
-        database.getReference().child("arka").child("user").child(Integer.toString(record.id)).removeValue((error, ref1) -> {
-            System.out.println("removed");
-        });
-        //DatabaseReference idRef = ref.child("user/" + record.id);
-        //idRef.removeValueAsync();
-        // TODO error implementation
+    public void delete(UserRecord record, Runnable callback, Consumer<String> errorCb) {
+        FirebaseDatabase.getInstance().goOnline();
+        FirebaseDatabase.getInstance().getReference().child("arka").child("user").child(Integer.toString(record.id))
+                .removeValue((error, ref) -> {
+                    if (error == null) {
+                        System.out.println("Successfully deleted user " + record.id);
+                        Platform.runLater(callback);
+                    } else {
+                        Platform.runLater(() -> errorCb.accept(error.getMessage()));
+                    }
+                });
     }
     
 }

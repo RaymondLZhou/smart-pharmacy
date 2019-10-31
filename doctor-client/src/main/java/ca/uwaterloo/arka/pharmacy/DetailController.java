@@ -14,7 +14,6 @@ import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
 
-import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
@@ -196,23 +195,19 @@ public class DetailController extends PaneController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this user record?");
         alert.showAndWait().filter(response -> response == ButtonType.OK).ifPresent(response -> {
             // delete it - first do it in the database so we don't go out of sync
-            try {
-                UserDao dao = UserDao.newDao();
-                dao.delete(record);
-            } catch (IOException e) {
+            UserDao dao = UserDao.newDao();
+            dao.delete(record, () -> {
+                // now delete it from everything else
+                getListController().removePatientCard(record);
+                displayRecord(null);
+            }, errMsg -> {
                 System.err.println("[DetailController] Could not delete record with id " + record.id);
-                e.printStackTrace();
+                System.err.println(errMsg);
                 
                 // tell the user
                 Alert error = new Alert(Alert.AlertType.ERROR, "Could not delete user record.");
                 error.show();
-                
-                return;
-            }
-            
-            // now delete it from everything else
-            getListController().removePatientCard(record);
-            displayRecord(null);
+            });
         });
     }
     
@@ -235,20 +230,18 @@ public class DetailController extends PaneController {
         }
         
         // Publish it
-        try {
-            UserDao dao = UserDao.newDao();
-            dao.update(record);
-        } catch (IOException e) {
+        UserDao dao = UserDao.newDao();
+        dao.update(record, () -> {}, errMsg -> {
             System.err.println("[DetailController] Could not update record of patient: " + record.getName());
-            e.printStackTrace();
-            
+            System.err.println(errMsg);
+
             // let the user know with an alert
             Alert alert = new Alert(Alert.AlertType.ERROR,
                     "Could not publish changes to database. Your changes are saved locally but will reset upon " +
                     "restarting the application, and will not appear in the pharmacy machine. Click 'save' again to " +
                     "retry publishing changes.");
             alert.show();
-        }
+        });
     }
     
 }

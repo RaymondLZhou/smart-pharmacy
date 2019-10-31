@@ -6,24 +6,27 @@ import java.util.function.Consumer;
 /**
  * An interface which the GUI app will use to access the database. The "real" implementation of this class should
  * establish connections to the database in each of these methods and perform the appropriate operation.
- * Alex: when you're connecting this app to the real database, implement this interface in something like UserDaoImpl
- * and then change newDao() to return an instance of your implementation.
  * Note: DAO stands for "database access object".
  */
 public interface UserDao {
-
+    
     /**
-     * Return a concrete UserDao. Change this to your real implementation class when you're done it and the
-     * app should use it.
+     * Return a concrete UserDao.
      */
-    static UserDao newDao() throws IOException {
+    static UserDao newDao() {
         return new DbUserDao();
     }
     
     /**
-     * Create the supplied user record in the DB, or throw IOException if we can't.
+     * Initialize the connection to the database, or throw IOException if we can't.
      */
-    void create(UserRecord user) throws IOException;
+    void initialize() throws IOException;
+    
+    /**
+     * Create the supplied user record in the DB, or call the error callback with a message if we can't.
+     * Call the callback if we can.
+     */
+    void create(UserRecord user, Runnable callback, Consumer<String> errorCb);
     
     /**
      * Retrieve a list of user records on this page, sorted alphabetically by name. Call the callback with each
@@ -36,16 +39,17 @@ public interface UserDao {
      * If an error is encountered, call the error callback with details.
      */
     void searchByName(String name, Consumer<UserRecord> callback, Consumer<String> errorCb);
-
+    
     /**
-     * Update the user record on the DB with the supplied user record, or throw IOException if we can't.
-     * The record to be updated can, I think, be referenced by the id field in UserRecord.
+     * Update the user record on the DB with the supplied user record, or call the error callback with a message
+     * if we can't. Call the callback if we did.
      */
-    void update(UserRecord record) throws IOException;
-
+    void update(UserRecord record, Runnable callback, Consumer<String> errorCb);
+    
     /**
-     * Delete the user record on the DB (found by ID), or throw IOException if we can't.
+     * Delete the user record on the DB (found by ID), or call the error callback with a message if we can't.
+     * Call the callback if we can.
      */
-    void delete(UserRecord record) throws IOException;
+    void delete(UserRecord record, Runnable callback, Consumer<String> errorCb);
     
 }

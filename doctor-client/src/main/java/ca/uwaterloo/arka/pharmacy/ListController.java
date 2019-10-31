@@ -7,7 +7,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -36,21 +35,8 @@ public class ListController extends PaneController {
             return;
         }
         
-        // Get a DAO
-        UserDao dao;
-        try {
-            dao = UserDao.newDao();
-        } catch (IOException e) {
-            System.err.println("[ListController] Could not access database: " + search);
-            e.printStackTrace();
-            
-            Alert error = new Alert(Alert.AlertType.ERROR, "Error: could not access database");
-            error.show();
-            
-            return;
-        }
-        
         // Search for the records
+        UserDao dao = UserDao.newDao();
         patientList.getChildren().clear(); // straight up assuming it'll work
         dao.searchByName(search, record -> {
             PatientCard card = new PatientCard(record);
@@ -65,18 +51,7 @@ public class ListController extends PaneController {
     
     private void getAllUsersFromDatabase() { // TODO combine this with the method above it
         // Get all the users
-        UserDao dao;
-        try {
-            dao = UserDao.newDao();
-        } catch (IOException e) {
-            System.err.println("[ListController] Could not initialize DAO");
-            e.printStackTrace();
-            
-            Alert error = new Alert(Alert.AlertType.ERROR, "Error: could not connect to database");
-            error.show();
-            
-            return;
-        }
+        UserDao dao = UserDao.newDao();
         
         // Get them
         patientList.getChildren().clear(); // straight up assuming it'll work
@@ -98,25 +73,20 @@ public class ListController extends PaneController {
         UserRecord newRecord = new UserRecord(uuid.hashCode(), "New User", new ArrayList<>(), new ArrayList<>(), "");
         
         // gotta save it before we can edit it
-        try {
-            UserDao dao = UserDao.newDao();
-            dao.create(newRecord);
-        } catch (IOException e) {
-            System.err.println("[ListController] Could not create new user record");
-            e.printStackTrace();
+        UserDao dao = UserDao.newDao();
+        dao.create(newRecord, () -> {
+            // we're good
+            PatientCard newCard = new PatientCard(newRecord);
+            addPatient(newCard);
             
+            getDetailController().displayRecord(newRecord);
+            getDetailController().edit();
+        }, errMsg -> {
+            System.err.println("[ListController] Could not create new user record");
+            System.err.println(errMsg);
             Alert error = new Alert(Alert.AlertType.ERROR, "Could not register a new user with the database.");
             error.show();
-            
-            return;
-        }
-        
-        // we're good
-        PatientCard newCard = new PatientCard(newRecord);
-        addPatient(newCard);
-        
-        getDetailController().displayRecord(newRecord);
-        getDetailController().edit();
+        });
     }
     
     /** Remove the card with the following record */
