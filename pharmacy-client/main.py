@@ -14,6 +14,9 @@ import asyncio
 import json
 import base64
 
+# pre-installed for the rapsberry pi
+import RPi.GPIO as gpio
+
 # please run setup.sh first to install these libraries
 import numpy as np
 import cv2
@@ -24,9 +27,28 @@ import aiohttp
 api_endpoint = 'https://example.com/arka'
 # constant: current api version
 api_version = '0'
+# constant: safety factor for the multiple face selector algorithm
+#   1 makes the check redundant
+#   higher makes it less likely to detect the wrong face, but we also shouldn't be too cautious
+area_safety_factor = 4
 
 # local drug database
 din_to_motor = {}
+
+def setup_pins():
+    """
+    Gets GPIO and the pins ready for use
+    """
+    # magic initialization of gpio
+    gpio.cleanup()
+    gpio.setmode(gpio.BCM)
+    # get specific pins ready
+    for motor in din_to_motor.values():
+        for pin in motor:
+            gpio.setup(pin, gpio.OUT)
+            gpio.output(pin, False)
+
+    logging.log(logging.INFO, 'All GPIO pins have been initialized')
 
 async def dispense(din):
     """
@@ -101,7 +123,7 @@ def pack_fingerprint(fingerprint):
 
     if np.any(fingerprint >  1):raise ValueError('Fingerprint contains value greater than 1')
     if np.any(fingerprint < -1):raise ValueError('Fingerprint contains value less than -1')
-    
+
     # convert from 64-bit float in range [-1, 1] to 16-bit int in full range
 
     # 1 - 2^-53 is the largest double value below 1
@@ -145,17 +167,33 @@ async def main_step(capture):
     pixels = cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)
 
     logging.log(logging.DEBUG, 'Image colour channels changed to RGB')
-    
+
     # find face locations in the image
+    # these are represented as int tuples: (top, right, bottom, left)
+    # the actual face pixels can be accessed as the rectangle pixels[top:bottom,left:right]
     face_boxes = face_recognition.face_locations(pixels, model='hog')
     num_faces = len(face_boxes)
 
-    logging.log(logging.DEBUG, 'Found ' + str(num_faces) + 'faces in the image')
+    logging.log(logging.DEBUG, 'Found ' + str(num_faces) + ' faces in the image')
+
+    # filter faces so only 1 is left
+    if num_faces > 1:
+        # the algorithm:
+        # calculate the area of each bounding box
+        # heuristic: an object closer to the camera takes up more space in the image
+        # to be safe, we will demand a certain safety margin, so if the maximums are close, we act like there is nothing
+        face_packs = [((xmax - xmin) * (ymax - ymin), (ymin, xmax, ymax, xmin)) for (ymin, xmax, ymax, xmin) in face_boxes]
+        face_packs.sort(reverse=True)
+        logging.log(logging.DEBUG, 'Comparing faces with area ' + str(face_packs[0][0]) + ' and area ' + str(face_packs[1][0]) + ' using safety factor ' + str(area_safety_factor))
+        if face_packs[0][0] > face_packs[1][0] * area_safety_factor:
+            logging.log(logging.DEBUG, 'Determined the first face to be significant enough, so using it')
+            face_boxes = [face_packs[0][1]]
+        else:
+            logging.log(logging.DEBUG, 'Determined that no face is significant enough to use')
+            face_boxes = []
 
     # no faces means nothing to do
     if num_faces == 0:return
-
-    # TODO filter faces so only 1 is left, or else give up
 
     # generate the 128-vector as face fingerprint
     fingerprints = face_recognition.face_encodings(pixels, face_boxes)
@@ -179,11 +217,14 @@ async def main_step(capture):
             }
         # response is assumed none until we get something
         data_response = None
+        # people are not that patient
+        timeout = aiohttp.ClientTimeout(total=10)
 
         # connect to the api!
         async with session.get(
             api_endpoint + '/user/pharmacy_get',
-            json = data_send
+            json = data_send,
+            timeout = timeout
             ) as response:
 
             logging.log(logging.DEBUG, 'Sent face fingerprint to authenticate')
@@ -193,8 +234,13 @@ async def main_step(capture):
 
             logging.log(logging.DEBUG, 'Decoded response data as JSON')
         # continue if it succeeded
-        if data_response is not None and data.get('success', None) and data['version'] == api_version:
-            logging.log(logging.DEBUG, 'Authenticated and prescription data acquired')
+        if data_response is not None:
+            if data_response['version'] != api_version:
+                raise AssertionError('API response returned version ' + data_response['version'] + ' but this program uses version ' + api_version)
+            if not data_response['success']:
+                logging.log(logging.INFO, 'API authentication attempt reported failure')
+                return
+            logging.log(logging.INFO, 'Authenticated and prescription data acquired')
 
             # the authentication token for this session
             auth_token = data['id']
@@ -228,7 +274,7 @@ async def main_async():
     """
     # log timing information
     logging.log(logging.INFO, 'Starting main function | Current UTC time is ' + str(datetime.datetime.utcnow()))
-    
+
     # set up the video capture object
     capture = cv2.VideoCapture(0)
 
@@ -243,7 +289,7 @@ async def main_async():
         except KeyboardInterrupt:
             # the user intends to stop the program, so we respect this
             logging.log(logging.INFO, 'Exiting main loop because a keyboard interrupt (SIGINT) was received')
-            raise KeyboardInterrupt
+            break
         except Exception as exc:
             # any other error must not break the program
             logging.log(logging.ERROR, exc)
@@ -261,12 +307,17 @@ def main():
     Redirects to main_async.
     """
     global din_to_motor
-                
+
+    logging.log(logging.INFO, 'Loading configuration')
+
     with open('din.cfg','r') as file:
         for line in file:
-                din, motor = line.strip().split()
+                din, *motor = line.strip().split()
+                motor = tuple(map(int, motor))
                 din_to_motor[din] = motor
-                
+
+    logging.log(logging.INFO, 'Read {DIN:pins} mapping as ' + str(din_to_motor))
+
     asyncio.run(main_async())
 
 def main_test():
@@ -282,26 +333,26 @@ def main_test():
 
     for _ in range(1):
         print('start of main loop')
-        
+
         # try to capture an image
         # image is a 3d array: (Y, X, bgr)
         ret, frame = cap.read()
-        
+
         print('image captured')
-        
+
         # reorder to RGB
         # not necessary to do it this way but it works
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
+
         print('image converted to rgb')
-        
+
         # we must first detect and locate faces within the image
         # this is separate from the face fingerprinting
         face_boxes = face_recognition.face_locations(frame,
             model='hog')
-        
+
         print('faces detected in image')
-        
+
         # face_recognition library includes a premade AI
         # this will spit out a 1d array with 128 floating point entries
         # they seem to be within [-1, 1] and average at 0
@@ -312,7 +363,7 @@ def main_test():
         print('face fingerprints generated')
 
         print(f'created {len(fingerprints)} fingerprints')
-        
+
         for index, fingerprint in enumerate(fingerprints):
             print('-'*40)
             print(f'data of fingerprint #{index}')
@@ -334,4 +385,5 @@ def main_test():
 
 # standard way to invoke main but only if this script is run as the program and not a library
 if __name__ == '__main__':
-    main_test()
+    logging.basicConfig(level=logging.DEBUG) # just for testing
+    main()
