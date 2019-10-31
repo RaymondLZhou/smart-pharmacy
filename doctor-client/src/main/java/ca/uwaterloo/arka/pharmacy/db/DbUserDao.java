@@ -13,8 +13,6 @@ import javafx.application.Platform;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Consumer;
 
 class DbUserDao implements UserDao{
@@ -127,11 +125,9 @@ class DbUserDao implements UserDao{
     public void update(UserRecord user) throws IOException {
         //Overwrites current user by creating a new entry
         database.goOnline();
-        DatabaseReference usersRef = database.getReference("/arka/user");
-        Map<String, UserRecord> users = new HashMap<>();
-        users.put(Integer.toString(user.id), user);
+        DatabaseReference usersRef = database.getReference("/arka/user/" + user.id);
         try {
-            usersRef.setValue(users, (error, ref1) -> {
+            usersRef.setValue(user, (error, ref1) -> {
                 System.out.println("updated"); 
             });
         } catch (Exception e) {
