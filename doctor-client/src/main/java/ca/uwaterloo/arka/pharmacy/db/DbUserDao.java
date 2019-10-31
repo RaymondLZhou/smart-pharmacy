@@ -90,7 +90,9 @@ class DbUserDao implements UserDao{
      */
     @Override
     public void searchByName(String name, Consumer<UserRecord> callback, Consumer<String> errorCb) {
-        Query query = database.getReference("/arka/user").orderByChild("name").equalTo(name);
+        // the startAt/endAt trick is to get all users whose names start with name
+        // unicode #ffff is the 'last' character so all names starting with name will be between name and name + that
+        Query query = database.getReference("/arka/user").orderByChild("name").startAt(name).endAt(name + "\uffff");
         doSearch(query, callback, errorCb);
     }
     
