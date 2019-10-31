@@ -2,7 +2,9 @@ package ca.uwaterloo.arka.pharmacy.db;
 
 import com.google.firebase.database.Exclude;
 import javafx.beans.property.ListProperty;
+import javafx.beans.property.MapProperty;
 import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleMapProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -29,7 +31,7 @@ public class UserRecord {
     private ListProperty<String> doctorsProperty = new SimpleListProperty<>();
     private ListProperty<PrescriptionRecord> prescriptionsProperty = new SimpleListProperty<>();
     private StringProperty fingerprintProperty = new SimpleStringProperty();
-    private ListProperty<String> transactionRecordProperty = new SimpleListProperty<>();
+    private MapProperty<String, TransactionRecord> transactionRecordProperty = new SimpleMapProperty<>();
     
     public UserRecord() {
         // No-arg constructor required for Firebase
@@ -38,7 +40,7 @@ public class UserRecord {
         setFingerprint("");
         prescriptionsProperty.setValue(FXCollections.observableList(new ArrayList<>()));
         doctorsProperty.setValue(FXCollections.observableList(new ArrayList<>()));
-        transactionRecordProperty.setValue(FXCollections.observableList(new ArrayList<>()));
+        transactionRecordProperty.setValue(FXCollections.observableHashMap());
     }
     
     public UserRecord(int id, String name, List<String> doctors, List<PrescriptionRecord> prescriptions,
@@ -120,15 +122,15 @@ public class UserRecord {
     }
     
     // for firebase serialization - there's a record field in the DB
-    public List<String> getRecord() {
+    public Map<String, TransactionRecord> getRecord() {
         return transactionRecordProperty.get();
     }
     
-    public void setRecord(List<String> record) {
-        transactionRecordProperty.set(FXCollections.observableList(record));
+    public void setRecord(Map<String, TransactionRecord> record) {
+        transactionRecordProperty.set(FXCollections.observableMap(record));
     }
     
-    public ListProperty<String> transactionRecordProperty() {
+    public MapProperty<String, TransactionRecord> transactionRecordProperty() {
         return transactionRecordProperty;
     }
     
@@ -243,6 +245,52 @@ public class UserRecord {
                     ", type='" + type + '\'' +
                     ", timestamp=" + timestamp +
                     ", expires=" + expires +
+                    '}';
+        }
+        
+    }
+    
+    // POJO to make Firebase happy, we don't use it but whatever we need it for Firebase
+    public static class TransactionRecord {
+        
+        private List<Integer> dins;
+        private long timestamp;
+        
+        public List<Integer> getDins() {
+            return dins;
+        }
+        
+        public void setDins(List<Integer> dins) {
+            this.dins = dins;
+        }
+        
+        public long getTimestamp() {
+            return timestamp;
+        }
+        
+        public void setTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+        }
+        
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TransactionRecord that = (TransactionRecord) o;
+            return timestamp == that.timestamp &&
+                    Objects.equals(dins, that.dins);
+        }
+        
+        @Override
+        public int hashCode() {
+            return Objects.hash(dins, timestamp);
+        }
+        
+        @Override
+        public String toString() {
+            return "TransactionRecord{" +
+                    "dins=" + dins +
+                    ", timestamp=" + timestamp +
                     '}';
         }
         
