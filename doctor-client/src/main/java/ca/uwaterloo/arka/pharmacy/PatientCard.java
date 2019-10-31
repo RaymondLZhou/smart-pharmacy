@@ -10,7 +10,6 @@ import javafx.scene.text.Text;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.stream.Collectors;
 
 /**
  * A custom component representing the patient cards displayed in the list box. Also the controller of that component.
@@ -43,9 +42,7 @@ public class PatientCard extends Pane {
     public void initialize() {
         patientNameText.textProperty().bind(record.nameProperty());
         doctorsNamesText.textProperty().bind(Bindings.createStringBinding(
-                () -> record.getDoctors().stream()
-                        .map(UserRecord.DoctorRecord::getName)
-                        .collect(Collectors.joining(", ")), record.doctorsProperty()));
+                () -> String.join(", ", record.getDoctors()), record.doctorsProperty()));
     }
     
     public UserRecord getRecord() {

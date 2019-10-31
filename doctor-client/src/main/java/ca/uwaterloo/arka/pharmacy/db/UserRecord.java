@@ -1,9 +1,16 @@
 package ca.uwaterloo.arka.pharmacy.db;
 
-import javafx.beans.property.*;
+import com.google.firebase.database.Exclude;
+import javafx.beans.property.ListProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -17,14 +24,25 @@ import java.util.stream.Collectors;
  */
 public class UserRecord {
     
-    public final int id;
+    public int id;
     private StringProperty nameProperty = new SimpleStringProperty();
-    private ListProperty<DoctorRecord> doctorsProperty = new SimpleListProperty<>();
+    private ListProperty<String> doctorsProperty = new SimpleListProperty<>();
     private ListProperty<PrescriptionRecord> prescriptionsProperty = new SimpleListProperty<>();
-    private ObjectProperty<FaceFingerprintRecord> fingerprintProperty = new SimpleObjectProperty<>();
+    private StringProperty fingerprintProperty = new SimpleStringProperty();
+    private ListProperty<String> transactionRecordProperty = new SimpleListProperty<>();
     
-    public UserRecord(int id, String name, List<DoctorRecord> doctors, List<PrescriptionRecord> prescriptions,
-                      FaceFingerprintRecord fingerprint) {
+    public UserRecord() {
+        // No-arg constructor required for Firebase
+        id = -1;
+        setName("");
+        setFingerprint("");
+        prescriptionsProperty.setValue(FXCollections.observableList(new ArrayList<>()));
+        doctorsProperty.setValue(FXCollections.observableList(new ArrayList<>()));
+        transactionRecordProperty.setValue(FXCollections.observableList(new ArrayList<>()));
+    }
+    
+    public UserRecord(int id, String name, List<String> doctors, List<PrescriptionRecord> prescriptions,
+                      String fingerprint) {
         if (name == null || doctors == null || prescriptions == null || fingerprint == null
                 || doctors.contains(null) || prescriptions.contains(null)) {
             throw new NullPointerException("UserRecord cannot have any null fields");
@@ -36,6 +54,10 @@ public class UserRecord {
         fingerprintProperty.set(fingerprint);
     }
     
+    public int getId() {
+        return id;
+    }
+
     public String getName() {
         return nameProperty.get();
     }
@@ -49,15 +71,20 @@ public class UserRecord {
         return nameProperty;
     }
     
-    public List<DoctorRecord> getDoctors() {
+    public List<String> getDoctors() {
         return doctorsProperty.get();
     }
-    
-    public ListProperty<DoctorRecord> doctorsProperty() {
+
+    public void setDoctors(List<String> doctors) {
+        doctorsProperty.set(FXCollections.observableList(doctors));
+    }
+
+    public ListProperty<String> doctorsProperty() {
         return doctorsProperty;
     }
     
-    public List<PrescriptionRecord> getPrescriptions() {
+    @Exclude
+    public List<PrescriptionRecord> getPrescriptionList() {
         return prescriptionsProperty.get();
     }
     
@@ -65,17 +92,44 @@ public class UserRecord {
         return prescriptionsProperty;
     }
     
-    public FaceFingerprintRecord getFingerprint() {
+    /** To satisfy Firebase - prescriptions is technically a map */
+    public Map<String, PrescriptionRecord> getPrescriptions() {
+        Map<String, PrescriptionRecord> res = new HashMap<>();
+        for (PrescriptionRecord prescription : getPrescriptionList()) {
+            res.put("DIN_" + prescription.getDin(), prescription);
+        }
+        return res;
+    }
+    
+    /** Also to satisfy Firebase */
+    public void setPrescriptions(Map<String, PrescriptionRecord> map) {
+        prescriptionsProperty.set(FXCollections.observableList(new ArrayList<>(map.values())));
+    }
+    
+    public String getFingerprint() {
         return fingerprintProperty.get();
     }
     
-    public void setFingerprint(FaceFingerprintRecord fingerprint) {
+    public void setFingerprint(String fingerprint) {
         if (fingerprint == null) throw new NullPointerException("cannot have null fingerprint");
         fingerprintProperty.set(fingerprint);
     }
 
-    public ObjectProperty<FaceFingerprintRecord> fingerprintProperty() {
+    public StringProperty fingerprintProperty() {
         return fingerprintProperty;
+    }
+    
+    // for firebase serialization - there's a record field in the DB
+    public List<String> getRecord() {
+        return transactionRecordProperty.get();
+    }
+    
+    public void setRecord(List<String> record) {
+        transactionRecordProperty.set(FXCollections.observableList(record));
+    }
+    
+    public ListProperty<String> transactionRecordProperty() {
+        return transactionRecordProperty;
     }
     
     @Override
@@ -87,14 +141,14 @@ public class UserRecord {
         return getName().equals(user.getName())
                 && getDoctors().containsAll(user.getDoctors())
                 && user.getDoctors().containsAll(getDoctors())
-                && getPrescriptions().containsAll(user.getPrescriptions())
-                && user.getPrescriptions().containsAll(getPrescriptions())
+                && getPrescriptionList().containsAll(user.getPrescriptionList())
+                && user.getPrescriptionList().containsAll(getPrescriptionList())
                 && Objects.equals(getFingerprint(), user.getFingerprint());
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(getName(), getDoctors(), getPrescriptions(), getFingerprint());
+        return Objects.hash(getName(), getDoctors(), getPrescriptionList(), getFingerprint());
     }
     
     @Override
@@ -102,81 +156,68 @@ public class UserRecord {
         return "UserRecord{" +
                 "id='" + id + '\'' +
                 ", name='" + getName() + '\'' +
-                ", doctors=" + getDoctors().stream().map(DoctorRecord::toString).collect(Collectors.joining(", ")) +
-                ", prescriptions=" + getPrescriptions().stream().map(PrescriptionRecord::toString)
+                ", doctors=" + String.join(", ", getDoctors()) +
+                ", prescriptions=" + getPrescriptionList().stream().map(PrescriptionRecord::toString)
                     .collect(Collectors.joining(", ")) +
                 ", fingerprint=" + getFingerprint() +
                 '}';
     }
-
-    /**
-     * A POJO representing the records in the "doctor" field in the DB documents.
-     */
-    public static class DoctorRecord {
-        private StringProperty nameProperty = new SimpleStringProperty();
-        private IntegerProperty idProperty = new SimpleIntegerProperty();
-        
-        public DoctorRecord(String name, int id) {
-            if (name == null) throw new NullPointerException("cannot have null doctor name");
-            idProperty.set(id);
-            nameProperty.set(name);
-        }
-        
-        public String getName() {
-            return nameProperty.get();
-        }
-        
-        public void setName(String name) {
-            if (name == null) throw new NullPointerException("cannot have null doctor name");
-            nameProperty.set(name);
-        }
-        
-        public StringProperty nameProperty() {
-            return nameProperty;
-        }
-        
-        public int getId() {
-            return idProperty.get();
-        }
-        
-        public void setId(int id) {
-            idProperty.set(id);
-        }
-        
-        public IntegerProperty idProperty() {
-            return idProperty;
-        }
-        
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            DoctorRecord that = (DoctorRecord) o;
-            return getId() == that.getId() && getName().equals(that.getName());
-        }
-        
-        @Override
-        public int hashCode() {
-            return Objects.hash(getName(), getId());
-        }
-        
-        @Override
-        public String toString() {
-            return "DoctorRecord{" +
-                    "name='" + getName() + '\'' +
-                    ", id=" + getId() +
-                    '}';
-        }
-    }
-
+    
     /**
      * A POJO representing each prescription in the "prescriptions" field in the DB docs. Immutable.
      */
     public static class PrescriptionRecord {
-        public final int id;
         
-        public PrescriptionRecord(int id) {
-            this.id = id;
+        private int din;
+        private String type;
+        private long timestamp;
+        private long expires;
+        
+        public PrescriptionRecord() {
+            // no-arg constructor required for Firebase
+            din = -1;
+            type = "";
+            timestamp = -1;
+            expires = -1;
+        }
+        
+        public PrescriptionRecord(int din) {
+            this.din = din;
+            type = "DIN #" + din; // TODO allow the user to choose this
+            timestamp = System.currentTimeMillis();
+            expires = timestamp + (7 * 24 * 60 * 60 * 1000); // expires in a week for now
+        }
+        
+        public void setDin(int id) {
+            din = id;
+        }
+        
+        public int getDin() {
+            return din;
+        }
+        
+        public String getType() {
+            return type;
+        }
+        
+        public void setType(String type) {
+            this.type = type;
+        }
+        
+        public long getTimestamp() {
+            return timestamp;
+        }
+        
+        public void setTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+        }
+        
+        public long getExpires() {
+            return expires;
+        }
+        
+        public void setExpires(long expires) {
+            this.expires = expires;
         }
         
         @Override
@@ -184,65 +225,27 @@ public class UserRecord {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             PrescriptionRecord that = (PrescriptionRecord) o;
-            return id == that.id;
+            return din == that.din &&
+                    timestamp == that.timestamp &&
+                    expires == that.expires &&
+                    Objects.equals(type, that.type);
         }
         
         @Override
         public int hashCode() {
-            return Objects.hash(id);
+            return Objects.hash(din, type, timestamp, expires);
         }
         
         @Override
         public String toString() {
             return "PrescriptionRecord{" +
-                    "id=" + id +
+                    "din=" + din +
+                    ", type='" + type + '\'' +
+                    ", timestamp=" + timestamp +
+                    ", expires=" + expires +
                     '}';
         }
-    }
-
-    /**
-     * A POJO representing the face ID fingerprint field in the DB doc.
-     */
-    public static class FaceFingerprintRecord {
-        private StringProperty dataProperty = new SimpleStringProperty();
         
-        public FaceFingerprintRecord(String data) {
-            if (data == null) throw new NullPointerException("cannot have null fingerprint data");
-            dataProperty.set(data);
-        }
-        
-        public String getData() {
-            return dataProperty.get();
-        }
-        
-        public void setData(String data) {
-            if (data == null) throw new NullPointerException("cannot have null fingerprint data");
-            dataProperty.set(data);
-        }
-        
-        public StringProperty dataProperty() {
-            return dataProperty;
-        }
-        
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            FaceFingerprintRecord that = (FaceFingerprintRecord) o;
-            return getData().equals(that.getData());
-        }
-        
-        @Override
-        public int hashCode() {
-            return Objects.hash(getData());
-        }
-        
-        @Override
-        public String toString() {
-            return "FaceFingerprint{" +
-                    "data='" + getData() + '\'' +
-                    '}';
-        }
     }
     
 }

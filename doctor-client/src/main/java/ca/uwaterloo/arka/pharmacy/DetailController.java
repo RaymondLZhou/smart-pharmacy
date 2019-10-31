@@ -15,7 +15,6 @@ import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +26,7 @@ import java.util.stream.Collectors;
  */
 // TODO - a selection of doctors, also prescriptions rather than raw ID
 // TODO - some save status indicator
+// TODO - prevent having multiple prescriptions of same ID
 public class DetailController extends PaneController {
     
     @FXML private Node detailPaneRoot;
@@ -93,15 +93,13 @@ public class DetailController extends PaneController {
         
         // Bind all the fields
         nameText.textProperty().bind(record.nameProperty());
-        faceFingerprintDataText.textProperty().bind(record.getFingerprint().dataProperty());
+        faceFingerprintDataText.textProperty().bind(record.fingerprintProperty());
         
         doctorsText.textProperty().bind(Bindings.createStringBinding(
-                () -> record.getDoctors().stream()
-                        .map(UserRecord.DoctorRecord::getName)
-                        .collect(Collectors.joining(", ")), record.doctorsProperty()));
+                () -> String.join(", ", record.getDoctors()), record.doctorsProperty()));
         prescriptionIdText.textProperty().bind(Bindings.createStringBinding(
-                () -> record.getPrescriptions().stream()
-                        .map(prescription -> Integer.toString(prescription.id))
+                () -> record.getPrescriptionList().stream()
+                        .map(prescription -> Integer.toString(prescription.getDin()))
                         .collect(Collectors.joining(", ")), record.prescriptionsProperty()));
         
         detailPaneRoot.setVisible(true);
@@ -113,14 +111,14 @@ public class DetailController extends PaneController {
         
         // copy the record stuff into the editing stuff
         nameField.setText(record.getName());
-        faceFingerprintDataField.setText(record.getFingerprint().getData());
+        faceFingerprintDataField.setText(record.getFingerprint());
         doctorsList.getItems().clear();
         // TODO have a better doctor choosing UI
-        doctorsList.getItems().addAll(record.getDoctors().stream().map(UserRecord.DoctorRecord::getName)
-                .collect(Collectors.toList()));
+        doctorsList.getItems().addAll(record.getDoctors());
         prescriptionIdList.getItems().clear();
         // TODO have a list of prescriptions to choose from
-        prescriptionIdList.getItems().addAll(record.getPrescriptions().stream().map(prescription -> prescription.id)
+        prescriptionIdList.getItems().addAll(record.getPrescriptionList().stream()
+                .map(UserRecord.PrescriptionRecord::getDin)
                 .collect(Collectors.toList()));
         
         changeMode(true);
@@ -198,8 +196,8 @@ public class DetailController extends PaneController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this user record?");
         alert.showAndWait().filter(response -> response == ButtonType.OK).ifPresent(response -> {
             // delete it - first do it in the database so we don't go out of sync
-            UserDao dao = UserDao.newDao();
             try {
+                UserDao dao = UserDao.newDao();
                 dao.delete(record);
             } catch (IOException e) {
                 System.err.println("[DetailController] Could not delete record with id " + record.id);
@@ -224,24 +222,21 @@ public class DetailController extends PaneController {
         
         // update the record (and therefore the displaying stuff) with the editing data
         record.setName(nameField.getText());
-        record.getFingerprint().setData(faceFingerprintDataField.getText());
+        record.setFingerprint(faceFingerprintDataField.getText());
         
         record.getDoctors().clear();
-        Random idGen = new Random();
         for (String doctorName : doctorsList.getItems()) {
-            // TODO don't just randomly generate an ID, actually preserve it
-            UserRecord.DoctorRecord doctorRecord = new UserRecord.DoctorRecord(doctorName, idGen.nextInt());
-            record.getDoctors().add(doctorRecord);
+            record.getDoctors().add(doctorName);
         }
         
-        record.getPrescriptions().clear();
+        record.getPrescriptionList().clear();
         for (int prescriptionId : prescriptionIdList.getItems()) {
-            record.getPrescriptions().add(new UserRecord.PrescriptionRecord(prescriptionId));
+            record.getPrescriptionList().add(new UserRecord.PrescriptionRecord(prescriptionId));
         }
         
         // Publish it
-        UserDao dao = UserDao.newDao();
         try {
+            UserDao dao = UserDao.newDao();
             dao.update(record);
         } catch (IOException e) {
             System.err.println("[DetailController] Could not update record of patient: " + record.getName());

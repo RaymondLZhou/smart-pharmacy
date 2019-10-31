@@ -1,7 +1,7 @@
 package ca.uwaterloo.arka.pharmacy.db;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * An interface which the GUI app will use to access the database. The "real" implementation of this class should
@@ -16,8 +16,8 @@ public interface UserDao {
      * Return a concrete UserDao. Change this to your real implementation class when you're done it and the
      * app should use it.
      */
-    static UserDao newDao() {
-        return new TestingUserDao();
+    static UserDao newDao() throws IOException {
+        return new DbUserDao();
     }
     
     /**
@@ -26,22 +26,16 @@ public interface UserDao {
     void create(UserRecord user) throws IOException;
     
     /**
-     * Retrieve a list of user records on this page, sorted alphabetically by name, or throw IOException if we can't.
-     * (Tell me if Firebase doesn't support pagination and I'll change stuff.)
+     * Retrieve a list of user records on this page, sorted alphabetically by name. Call the callback with each
+     * record retrieved. If there's an error, call the error callback.
      */
-    List<UserRecord> getAllSortedAlphabetically(int page) throws IOException;
-
-    /**
-     * Retrieve the number of pages of users that getAllSortedAlphabetically could possibly return, or throw
-     * IOException if we can't. (If Firebase doesn't support this, tell me.) getAllSortedAlphabetically() should
-     * return non-empty lists for all page inputs >= 0 and strictly less than getNumPages().
-     */
-    int getNumPages() throws IOException;
+    void getAllSortedAlphabetically(Consumer<UserRecord> callback, Consumer<String> errorCb);
     
     /**
-     * Retrieve a list of user records with the given name in arbitrary order, or throw IOException if we can't.
+     * Retrieve a list of user records with the given name in arbitrary order, calling the callback for each one.
+     * If an error is encountered, call the error callback with details.
      */
-    List<UserRecord> searchByName(String name) throws IOException;
+    void searchByName(String name, Consumer<UserRecord> callback, Consumer<String> errorCb);
 
     /**
      * Update the user record on the DB with the supplied user record, or throw IOException if we can't.

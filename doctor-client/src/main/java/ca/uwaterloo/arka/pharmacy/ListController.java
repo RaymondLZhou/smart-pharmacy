@@ -9,7 +9,6 @@ import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -37,88 +36,70 @@ public class ListController extends PaneController {
             return;
         }
         
-        // Get the records
-        UserDao dao = UserDao.newDao();
-        List<UserRecord> records;
+        // Get a DAO
+        UserDao dao;
         try {
-            records = dao.searchByName(search);
+            dao = UserDao.newDao();
         } catch (IOException e) {
-            System.err.println("[ListController] Could not search for users by string: " + search);
+            System.err.println("[ListController] Could not access database: " + search);
             e.printStackTrace();
             
-            Alert error = new Alert(Alert.AlertType.ERROR,
-                    "Error: could not access database (failed to search for '" + search + "')");
+            Alert error = new Alert(Alert.AlertType.ERROR, "Error: could not access database");
             error.show();
             
             return;
         }
         
-        // Clear the box and display them
-        patientList.getChildren().clear();
-        for (UserRecord record : records) {
+        // Search for the records
+        patientList.getChildren().clear(); // straight up assuming it'll work
+        dao.searchByName(search, record -> {
             PatientCard card = new PatientCard(record);
             addPatient(card);
-        }
+        }, error -> {
+            System.err.println("[ListController] Could not search for string '" + search + "'");
+            System.err.println("Error: " + error);
+            Alert err = new Alert(Alert.AlertType.ERROR, "Error: could not retrieve search for '" + search + '"');
+            err.show();
+        });
     }
     
-    private void getAllUsersFromDatabase() {
-        // Get all the users with the annoying pagination thing
-        UserDao dao = UserDao.newDao();
-        
-        int numPages;
+    private void getAllUsersFromDatabase() { // TODO combine this with the method above it
+        // Get all the users
+        UserDao dao;
         try {
-            numPages = dao.getNumPages();
+            dao = UserDao.newDao();
         } catch (IOException e) {
-            System.err.println("[ListController] Could not get number of pages");
+            System.err.println("[ListController] Could not initialize DAO");
             e.printStackTrace();
-
-            // Add an error message to the patient list box
-            Alert error = new Alert(Alert.AlertType.ERROR,
-                    "Error: could not access database (failed to get number of pages)");
+            
+            Alert error = new Alert(Alert.AlertType.ERROR, "Error: could not connect to database");
             error.show();
-
+            
             return;
         }
-
-        // Fetch all the records
-        List<UserRecord> allRecords = new ArrayList<>();
-        for (int p = 0; p < numPages; ++p) {
-            List<UserRecord> records;
-            try {
-                records = dao.getAllSortedAlphabetically(p);
-                allRecords.addAll(records);
-            } catch (IOException e) {
-                System.err.println("[ListController] Could not get records:");
-                e.printStackTrace();
-
-                // Another informative error message
-                Alert error = new Alert(Alert.AlertType.ERROR,
-                        "Error: could not access database (failed to get patient records)");
-                error.show();
-                
-                break;
-            }
-        }
         
-        // Clear the list and add all the new ones
-        patientList.getChildren().clear();
-        
-        for (UserRecord record : allRecords) {
+        // Get them
+        patientList.getChildren().clear(); // straight up assuming it'll work
+        dao.getAllSortedAlphabetically(record -> {
             PatientCard card = new PatientCard(record);
             addPatient(card);
-        }
+        }, error -> {
+            System.err.println("[ListController] Could not retrieve user records");
+            System.err.println("Error: " + error);
+            Alert err = new Alert(Alert.AlertType.ERROR, "Error: could not retrieve patients from database");
+            err.show();
+        });
     }
     
     @FXML
     private void addNewPatient() {
         // strategy: make new record, save it immediately, send it to detail pane already open to edit
         UUID uuid = UUID.randomUUID();
-        UserRecord newRecord = new UserRecord(uuid.hashCode(), "New User", new ArrayList<>(), new ArrayList<>(),
-                new UserRecord.FaceFingerprintRecord(""));
+        UserRecord newRecord = new UserRecord(uuid.hashCode(), "New User", new ArrayList<>(), new ArrayList<>(), "");
         
         // gotta save it before we can edit it
-        UserDao dao = UserDao.newDao();
         try {
+            UserDao dao = UserDao.newDao();
             dao.create(newRecord);
         } catch (IOException e) {
             System.err.println("[ListController] Could not create new user record");
