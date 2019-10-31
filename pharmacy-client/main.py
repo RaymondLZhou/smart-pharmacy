@@ -28,11 +28,67 @@ api_version = '0'
 # local drug database
 din_to_motor = {}
 
-async def dispense(session, din):
+async def dispense(din):
     """
     Try to dispense a drug.
+    Returns true if it succeeded.
     """
     motor = din_to_motor[din]
+
+    return False
+
+async def report_dispensed(auth_token, drugs_dispensed):
+    """
+    Reports back to the server that drugs were dispensed... later
+    """
+    # get the timestamp NOW
+    ts = datetime.datetime.utcnow().timestamp()
+
+    # wait until dispensing should be done
+    await asyncio.sleep(30)
+
+    # if nothing was dispensed, easy
+    if not drugs_dispensed:
+        logging.log(logging.INFO, 'No drug dispensing to report')
+        return True
+
+    logging.log(logging.DEBUG, 'Now trying to report drug dispensed')
+
+    # start a HTTP session
+    async with aiohttp.ClientSession() as session:
+        logging.log(logging.DEBUG, 'HTTP session started from report_dispensed')
+
+        # build the json object to send
+        data_send = {
+            'version': api_version,
+            'id': auth_token,
+            'din': drugs_dispensed,
+            'timestamp': ts
+            }
+        # response is assumed none until we get something
+        data_response = None
+
+        # it's not done until we've confirmed it's done
+        while data_response is None:
+
+            # connect to the api!
+            async with session.get(
+                api_endpoint + '/user/pharmacy_done',
+                json = data_send
+                ) as response:
+
+                # get data as json
+                data_response = response.json()
+
+                if data_response['version'] != api_version:
+                    raise AssertionError('Incorrect API version encountered in report_dispensed')
+                elif not data_response['success']:
+                    logging.log(logging.INFO, 'API endpoint said drug dispense report failed for whatever reason')
+                    data_response = None
+
+            await asyncio.sleep(30)
+
+        logging.log(logging.INFO, 'Drug delivery report completed and confirmed')
 
 def pack_fingerprint(fingerprint):
     """
@@ -112,17 +168,19 @@ async def main_step(capture):
 
     logging.log(logging.INFO, 'Packed face fingerprint as ' + packed_fingerprint.hex())
 
+    # start a HTTP session
     async with aiohttp.ClientSession() as session:
+        logging.log(logging.DEBUG, 'HTTP session started from main_step')
 
-        logging.log(logging.DEBUG, 'HTTP session started')
-
+        # build the json object to send
         data_send = {
-            version: api_version,
-            fingerprint: base64.b64encode(packed_fingerprint)
+            'version': api_version,
+            'fingerprint': base64.b64encode(packed_fingerprint)
             }
-
+        # response is assumed none until we get something
         data_response = None
 
+        # connect to the api!
         async with session.get(
             api_endpoint + '/user/pharmacy_get',
             json = data_send
@@ -130,25 +188,39 @@ async def main_step(capture):
 
             logging.log(logging.DEBUG, 'Sent face fingerprint to authenticate')
 
+            # get the response as json
             data_response = await response.json()
 
             logging.log(logging.DEBUG, 'Decoded response data as JSON')
-
+        # continue if it succeeded
         if data_response is not None and data.get('success', None) and data['version'] == api_version:
-
             logging.log(logging.DEBUG, 'Authenticated and prescription data acquired')
 
+            # the authentication token for this session
             auth_token = data['id']
+            # make a list of drugs that were dispensed
+            drugs_dispensed = []
 
+            await asyncio.create_task(report_dispensed(auth_token, drugs_dispensed))
+
+            # loop over all valid prescriptions
             for pres in data['prescriptions']:
-
+                # get the DIN of the drug
                 din = pres['din']
 
+                # is this drug in this pharmacy?
                 if din in din_to_motor:
-
                     logging.log(logging.INFO, 'Attempting to dispense drug with DIN ' + din)
 
-                    await dispense(session, din)
+                    # try to dispense it
+                    drug_was_dispensed = await dispense(din)
+
+                    if drug_was_dispensed:
+                        logging.log(logging.INFO, 'Drug dispense reported success')
+
+                        drugs_dispensed.append(din)
+                    else:
+                        logging.log(logging.INFO, 'Drug dispense reported failure')
 
 async def main_async():
     """
