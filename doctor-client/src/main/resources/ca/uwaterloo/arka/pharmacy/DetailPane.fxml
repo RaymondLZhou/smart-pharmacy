@@ -45,11 +45,13 @@
                     </HBox>
                 </VBox>
             </HBox>
-            <!-- TODO actually have a method to input/display face recognition data other than string -->
             <HBox>
                 <Label text="Face recognition data:" />
                 <Text fx:id="faceFingerprintDataText" />
-                <TextField fx:id="faceFingerprintDataField" managed="false" visible="false" />
+                <Button fx:id="captureFaceFingerprintButton"
+                        text="Capture face recognition data"
+                        onAction="#captureFaceFingerprint"
+                        managed="false" visible="false" />
             </HBox>
         </VBox>
     </ScrollPane>

@@ -2,6 +2,8 @@ package ca.uwaterloo.arka.pharmacy;
 
 import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
+import com.github.sarxos.webcam.Webcam;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -14,6 +16,7 @@ import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
 
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 /**
@@ -45,7 +48,8 @@ public class DetailController extends PaneController {
     @FXML private ListView<String> doctorsList;
     @FXML private Node prescriptionIdListContainer;
     @FXML private ListView<Integer> prescriptionIdList;
-    @FXML private TextField faceFingerprintDataField;
+    
+    @FXML private Button captureFaceFingerprintButton;
     
     private boolean editing = false;
     
@@ -110,7 +114,6 @@ public class DetailController extends PaneController {
         
         // copy the record stuff into the editing stuff
         nameField.setText(record.getName());
-        faceFingerprintDataField.setText(record.getFingerprint());
         doctorsList.getItems().clear();
         // TODO have a better doctor choosing UI
         doctorsList.getItems().addAll(record.getDoctors());
@@ -165,8 +168,8 @@ public class DetailController extends PaneController {
         doctorsText.setVisible(!edit);
         prescriptionIdText.setManaged(!edit);
         prescriptionIdText.setVisible(!edit);
-        faceFingerprintDataText.setManaged(!edit);
-        faceFingerprintDataText.setVisible(!edit);
+        captureFaceFingerprintButton.setManaged(!edit);
+        captureFaceFingerprintButton.setVisible(!edit);
         editBtn.setManaged(!edit);
         editBtn.setVisible(!edit);
         deleteBtn.setManaged(!edit);
@@ -179,8 +182,8 @@ public class DetailController extends PaneController {
         doctorsListContainer.setVisible(edit);
         prescriptionIdListContainer.setManaged(edit);
         prescriptionIdListContainer.setVisible(edit);
-        faceFingerprintDataField.setManaged(edit);
-        faceFingerprintDataField.setVisible(edit);
+        captureFaceFingerprintButton.setManaged(edit);
+        captureFaceFingerprintButton.setVisible(edit);
         saveBtn.setManaged(edit);
         saveBtn.setVisible(edit);
         exitBtn.setManaged(edit);
@@ -217,7 +220,6 @@ public class DetailController extends PaneController {
         
         // update the record (and therefore the displaying stuff) with the editing data
         record.setName(nameField.getText());
-        record.setFingerprint(faceFingerprintDataField.getText());
         
         record.getDoctors().clear();
         for (String doctorName : doctorsList.getItems()) {
@@ -242,6 +244,36 @@ public class DetailController extends PaneController {
                     "retry publishing changes.");
             alert.show();
         });
+    }
+    
+    @FXML
+    private void captureFaceFingerprint() {
+        // Apparently, we need to be on another thread to do webcam stuff
+        Thread webcamThread = new Thread(() -> {
+            Webcam webcam;
+            try {
+                webcam = Webcam.getDefault(1000);
+                if (webcam == null) throw new NullPointerException(); // to not duplicate error handling code
+            } catch (TimeoutException | NullPointerException e) {
+                // can't find one
+                handleNoWebcam();
+                return;
+            }
+            
+            // we've got a webcam - TODO do something with it
+            System.out.println("Initializing face fingerprint capture: webcam '" + webcam.getName() + "'");
+        });
+        webcamThread.setDaemon(true);
+        webcamThread.start();
+    }
+    
+    private void handleNoWebcam() {
+        // we don't have or can't find a webcam - can't capture face fingerprint
+        System.err.println("[DetailController] No webcam detected - can't capture face fingerprint");
+        Alert error = new Alert(Alert.AlertType.ERROR,
+                "No webcam detected, cannot capture face recognition data. Please connect a webcam or allow this " +
+                "application to access it and try again and try again.");
+        Platform.runLater(error::show);
     }
     
 }
