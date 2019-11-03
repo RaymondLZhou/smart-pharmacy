@@ -2,7 +2,6 @@ package ca.uwaterloo.arka.pharmacy;
 
 import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
-import com.github.sarxos.webcam.Webcam;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
@@ -15,9 +14,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.FrameGrabber;
+import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
+import org.bytedeco.opencv.opencv_core.IplImage;
 
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static org.bytedeco.opencv.helper.opencv_imgcodecs.cvSaveImage;
 
 /**
  * The controller class for the "detail" pane on the right side. Controls editing and saving records.
@@ -248,23 +253,45 @@ public class DetailController extends PaneController {
     
     @FXML
     private void captureFaceFingerprint() {
-        // Apparently, we need to be on another thread to do webcam stuff
-        Thread webcamThread = new Thread(() -> {
-            Webcam webcam;
+        Thread imageThread = new Thread(() -> {
+            // new thread so it doesn't block the UI thread
+            FrameGrabber grabber = new OpenCVFrameGrabber(0);
+            OpenCVFrameConverter.ToIplImage converter = new OpenCVFrameConverter.ToIplImage();
             try {
-                webcam = Webcam.getDefault(1000);
-                if (webcam == null) throw new NullPointerException(); // to not duplicate error handling code
-            } catch (TimeoutException | NullPointerException e) {
-                // can't find one
-                handleNoWebcam();
-                return;
+                grabber.start();
+                Frame frame = grabber.grab();
+                IplImage image = converter.convert(frame);
+                cvSaveImage("my-face.jpg", image);
+                grabber.close();
+                System.out.println("[DetailController] Successfully got an image from the webcam");
+            } catch (Exception e) {
+                System.err.println("[DetailController] Could not get image from webcam");
+                e.printStackTrace();
+                Alert error = new Alert(Alert.AlertType.ERROR,
+                        "Could not get an image from a webcam. Please ensure that a webcam is plugged in and this " +
+                        "application has access to it, then try again.");
+                error.show();
             }
-            
-            // we've got a webcam - TODO do something with it
-            System.out.println("Initializing face fingerprint capture: webcam '" + webcam.getName() + "'");
         });
-        webcamThread.setDaemon(true);
-        webcamThread.start();
+        imageThread.setDaemon(true);
+        imageThread.start();
+         
+//        Thread webcamThread = new Thread(() -> {
+//            Webcam webcam;
+//            try {
+//                webcam = Webcam.getDefault(1000);
+//                if (webcam == null) throw new NullPointerException(); // to not duplicate error handling code
+//            } catch (TimeoutException | NullPointerException e) {
+//                // can't find one
+//                handleNoWebcam();
+//                return;
+//            }
+//            
+//            // we've got a webcam - TODO do something with it
+//            System.out.println("Initializing face fingerprint capture: webcam '" + webcam.getName() + "'");
+//        });
+//        webcamThread.setDaemon(true);
+//        webcamThread.start();
     }
     
     private void handleNoWebcam() {

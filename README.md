@@ -1,3 +1,5 @@
 # Smart Pharmacy
 
 Smart pharmacy is an apparatus, which gives medicaments according to electronical prescription of the patient. Machines use FACE ID to access patient's electronical prescription (database), which was added by their doctor. For FACE ID, we will be using Raspberry PI and camera module. First stage of our project is making a prescription. Each doctor will have their cabinet, in which he will be able to choose, out of all list of drugs, only necessary ones and store them in patient's database. Second stage is Smart Pharmacy machine. When patient stands on the right position, where camera can detect and recognize their face, Raspberry PI will connect appropriate database of this patient, and get appropriate variables (medicaments), which will be used for Arduino commands. Arduino, then, will turn on appropriate servo motors to give out prescribed drugs. 
+
+NOTE: Due to a bug in IntelliJ IDEA, if run from inside IntelliJ, the doctor client application will not ask for permission to use the webcam when capturing face recognition data and will instead crash. To work around this, run it from the terminal with `gradle run` if running from source.
