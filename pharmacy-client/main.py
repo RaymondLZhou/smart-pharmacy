@@ -24,13 +24,32 @@ import face_recognition
 import aiohttp
 
 # constant: endpoint for the web API
-api_endpoint = 'https://example.com/arka'
+api_endpoint = 'https://smart-pharmacy-f818a.firebaseio.com/arka'
 # constant: current api version
 api_version = '0'
 # constant: safety factor for the multiple face selector algorithm
 #   1 makes the check redundant
 #   higher makes it less likely to detect the wrong face, but we also shouldn't be too cautious
 area_safety_factor = 4
+# constant: motor driving pattern
+#   this pattern is designed with the requirement that
+#   it must make 1 full turn (internally) when all pins are used
+#   and make 0 full turns if the last pin (index 3) is disabled or not used
+#   besides that, it tries to be short and apply more torque
+motor_pin_pattern = np.array(
+    [[1, 0, 0, 0],
+     [1, 1, 0, 0],
+     [0, 1, 1, 0],
+     [0, 0, 1, 1],
+     [0, 0, 0, 1],
+     [0, 1, 0, 1]],
+    dtype=bool
+     )
+# constant: number of repetitions of the motor pattern
+#   to achieve a full turn of the output
+motor_turn_repetitions = 2000
+# constant: delay in seconds between setps of the motor pattern
+motor_step_delay = 0.002
 
 # local drug database
 din_to_motor = {}
@@ -55,9 +74,40 @@ async def dispense(din):
     Try to dispense a drug.
     Returns true if it succeeded.
     """
-    motor = din_to_motor[din]
+    # we don't have that drug!
+    if din not in din_to_motor:
+        logging.log(logging.INFO, 'Cannot dispense drug with DIN ' + din + ' because this pharmacy does not have it')
+        return False
 
-    return False
+    # get the driving information
+    turns, *pins = din_to_motor[din]
+
+    logging.log(logging.INFO, 'Attempting to dispense drug with DIN ' + din + ' by driving pins ' + str(pins) + ' for ' + str(turns) + ' turns')
+
+    exc = None
+    try:
+        # run the motor pattern
+        for step in itertools.islice(
+            itertools.cycle(motor_pin_pattern),
+            int(turns * motor_turn_repetitions * len(motor_pin_pattern))
+            ):
+            for on_off, pin in zip(step, pins):
+                gpio.output(pin, on_off)
+            await asyncio.sleep(motor_step_delay)
+    except Exception as exc:
+        logging.log(logging.ERROR, exc)
+
+    logging.log(logging.INFO, 'Dispensing complete, now resetting pins ' + str(pins))
+
+    # reset all the pins for next time
+    for pin in pins:
+        gpio.output(pin, False)
+
+    # errors are bad! don't let them pass
+    if exc is not None:
+        raise exc
+
+    return True
 
 async def report_dispensed(auth_token, drugs_dispensed):
     """
@@ -312,9 +362,10 @@ def main():
 
     with open('din.cfg','r') as file:
         for line in file:
-                din, *motor = line.strip().split()
-                motor = tuple(map(int, motor))
-                din_to_motor[din] = motor
+                din, turns, *motor_pins = line.strip().split()
+                turns = float(turns)
+                motor_pins = tuple(map(int, motor_pins))
+                din_to_motor[din] = turns, *motor_pins
 
     logging.log(logging.INFO, 'Read {DIN:pins} mapping as ' + str(din_to_motor))
 
