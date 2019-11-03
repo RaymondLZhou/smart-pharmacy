@@ -47,7 +47,7 @@ motor_pin_pattern = np.array(
      )
 # constant: number of repetitions of the motor pattern
 #   to achieve a full turn of the output
-motor_turn_repetitions = 2000
+motor_turn_repetitions = 500
 # constant: delay in seconds between setps of the motor pattern
 motor_step_delay = 0.002
 
