@@ -2,6 +2,7 @@ package ca.uwaterloo.arka.pharmacy;
 
 import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -19,6 +20,11 @@ import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameGrabber;
 import org.bytedeco.opencv.opencv_core.IplImage;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Paths;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 import static org.bytedeco.opencv.helper.opencv_imgcodecs.cvSaveImage;
@@ -259,10 +265,48 @@ public class DetailController extends PaneController {
             try {
                 grabber.start();
                 Frame frame = grabber.grab();
-                IplImage image = converter.convert(frame);
-                cvSaveImage("my-face.jpg", image);
                 grabber.close();
-                System.out.println("[DetailController] Successfully got an image from the webcam");
+                IplImage image = converter.convert(frame);
+                
+                // save to the temp directory for the python script to access
+                String imgFilename = Paths.get(System.getProperty("java.io.tmpdir"), "face-fingerprint.png").toString();
+                System.out.println("[DetailController] Successfully got an image: saving to " + imgFilename);
+                cvSaveImage(imgFilename, image);
+                
+                // execute the python script
+                String pythonCommand = "python3 ./fingerprint.py " + imgFilename;
+                Process pythonProcess = Runtime.getRuntime().exec(pythonCommand);
+                
+                // pipe error logging from python script to System.out
+                InputStream pythonError = pythonProcess.getErrorStream();
+                InputStreamReader isReader = new InputStreamReader(pythonError);
+                BufferedReader reader = new BufferedReader(isReader);
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                }
+                
+                int exit = pythonProcess.waitFor();
+                System.out.println("[DetailController] Python script exited with status " + exit);
+                if (exit != 0) {
+                    // crap it failed
+                    Platform.runLater(() -> {
+                        Alert error = new Alert(Alert.AlertType.ERROR,
+                                "Error: Failed to generate fingerprint data. Please ensure that Python >=3.7 is " +
+                                "installed and executable by (not aliased to) the command `python3`.");
+                        error.show();
+                    });
+                    return;
+                }
+                
+                // get the fingerprint from the output
+                InputStream pythonOutput = pythonProcess.getInputStream();
+                Scanner scanner = new Scanner(pythonOutput);
+                String fingerprint = scanner.nextLine();
+                scanner.close();
+                
+                // use it as the fingerprint
+                Platform.runLater(() -> setFingerprint(fingerprint));
             } catch (Exception e) {
                 System.err.println("[DetailController] Could not get image from webcam");
                 e.printStackTrace();
@@ -274,6 +318,10 @@ public class DetailController extends PaneController {
         });
         imageThread.setDaemon(true);
         imageThread.start();
+    }
+    
+    private void setFingerprint(String fingerprint) {
+        record.setFingerprint(fingerprint);
     }
     
 }
