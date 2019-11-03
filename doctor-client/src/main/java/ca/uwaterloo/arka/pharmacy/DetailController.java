@@ -2,7 +2,6 @@ package ca.uwaterloo.arka.pharmacy;
 
 import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
-import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -275,32 +274,6 @@ public class DetailController extends PaneController {
         });
         imageThread.setDaemon(true);
         imageThread.start();
-         
-//        Thread webcamThread = new Thread(() -> {
-//            Webcam webcam;
-//            try {
-//                webcam = Webcam.getDefault(1000);
-//                if (webcam == null) throw new NullPointerException(); // to not duplicate error handling code
-//            } catch (TimeoutException | NullPointerException e) {
-//                // can't find one
-//                handleNoWebcam();
-//                return;
-//            }
-//            
-//            // we've got a webcam - TODO do something with it
-//            System.out.println("Initializing face fingerprint capture: webcam '" + webcam.getName() + "'");
-//        });
-//        webcamThread.setDaemon(true);
-//        webcamThread.start();
-    }
-    
-    private void handleNoWebcam() {
-        // we don't have or can't find a webcam - can't capture face fingerprint
-        System.err.println("[DetailController] No webcam detected - can't capture face fingerprint");
-        Alert error = new Alert(Alert.AlertType.ERROR,
-                "No webcam detected, cannot capture face recognition data. Please connect a webcam or allow this " +
-                "application to access it and try again and try again.");
-        Platform.runLater(error::show);
     }
     
 }
