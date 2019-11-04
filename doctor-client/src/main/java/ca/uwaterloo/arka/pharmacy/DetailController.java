@@ -24,6 +24,9 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
@@ -262,59 +265,71 @@ public class DetailController extends PaneController {
             // new thread so it doesn't block the UI thread
             FrameGrabber grabber = new OpenCVFrameGrabber(0);
             OpenCVFrameConverter.ToIplImage converter = new OpenCVFrameConverter.ToIplImage();
-            try {
-                grabber.start();
-                Frame frame = grabber.grab();
-                grabber.close();
-                IplImage image = converter.convert(frame);
-                
-                // save to the temp directory for the python script to access
-                String imgFilename = Paths.get(System.getProperty("java.io.tmpdir"), "face-fingerprint.png").toString();
-                System.out.println("[DetailController] Successfully got an image: saving to " + imgFilename);
-                cvSaveImage(imgFilename, image);
-                
-                // execute the python script
-                String pythonCommand = "python3 ./fingerprint.py " + imgFilename;
-                Process pythonProcess = Runtime.getRuntime().exec(pythonCommand);
-                
-                // pipe error logging from python script to System.out
-                InputStream pythonError = pythonProcess.getErrorStream();
-                InputStreamReader isReader = new InputStreamReader(pythonError);
-                BufferedReader reader = new BufferedReader(isReader);
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    System.out.println(line);
+            List<double[]> fingerprints = new ArrayList<>();
+            while (fingerprints.size() <= 2 || tooMuchUncertainty(fingerprints)) {
+                try {
+                    grabber.start();
+                    Frame frame = grabber.grab();
+                    grabber.close();
+                    IplImage image = converter.convert(frame);
+
+                    // save to the temp directory for the python script to access
+                    String imgFilename = Paths.get(System.getProperty("java.io.tmpdir"), "face-fingerprint.png")
+                            .toString();
+                    System.out.println("[DetailController] Successfully got an image: saving to " + imgFilename);
+                    cvSaveImage(imgFilename, image);
+
+                    // execute the python script
+                    String pythonCommand = "python3 ./fingerprint.py " + imgFilename;
+                    Process pythonProcess = Runtime.getRuntime().exec(pythonCommand);
+
+                    // pipe error logging from python script to System.out
+                    InputStream pythonError = pythonProcess.getErrorStream();
+                    InputStreamReader isReader = new InputStreamReader(pythonError);
+                    BufferedReader reader = new BufferedReader(isReader);
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println("[fingerprint.py] " + line);
+                    }
+
+                    int exit = pythonProcess.waitFor();
+                    System.out.println("[DetailController] Python script exited with status " + exit);
+                    if (exit != 0) {
+                        // crap it failed
+                        Platform.runLater(() -> {
+                            Alert error = new Alert(Alert.AlertType.ERROR,
+                                    "Error: Failed to generate fingerprint data. Please ensure that a face is visible " +
+                                    "to the webcam, and that Python 3.7 or above is installed.");
+                            error.show();
+                        });
+                        return;
+                    }
+
+                    // get the fingerprint from the output
+                    InputStream pythonOutput = pythonProcess.getInputStream();
+                    Scanner scanner = new Scanner(pythonOutput);
+                    double[] fingerprint = new double[128];
+                    for (int i = 0; i < 128; i++) {
+                        fingerprint[i] = scanner.nextDouble();
+                    }
+                    scanner.close();
+
+                    fingerprints.add(fingerprint);
+                    
+                    System.out.println("number of fingerprints kept = " + fingerprints.size());
+                } catch (Exception e) {
+                    System.err.println("[DetailController] Could not get image from webcam");
+                    e.printStackTrace();
+                    Alert error = new Alert(Alert.AlertType.ERROR,
+                            "Could not get an image from a webcam. Please ensure that a webcam is plugged in and " +
+                            "this application has access to it, then try again.");
+                    error.show();
                 }
-                
-                int exit = pythonProcess.waitFor();
-                System.out.println("[DetailController] Python script exited with status " + exit);
-                if (exit != 0) {
-                    // crap it failed
-                    Platform.runLater(() -> {
-                        Alert error = new Alert(Alert.AlertType.ERROR,
-                                "Error: Failed to generate fingerprint data. Please ensure that Python >=3.7 is " +
-                                "installed and executable by (not aliased to) the command `python3`.");
-                        error.show();
-                    });
-                    return;
-                }
-                
-                // get the fingerprint from the output
-                InputStream pythonOutput = pythonProcess.getInputStream();
-                Scanner scanner = new Scanner(pythonOutput);
-                String fingerprint = scanner.nextLine();
-                scanner.close();
-                
-                // use it as the fingerprint
-                Platform.runLater(() -> setFingerprint(fingerprint));
-            } catch (Exception e) {
-                System.err.println("[DetailController] Could not get image from webcam");
-                e.printStackTrace();
-                Alert error = new Alert(Alert.AlertType.ERROR,
-                        "Could not get an image from a webcam. Please ensure that a webcam is plugged in and this " +
-                        "application has access to it, then try again.");
-                error.show();
             }
+            double[] fingerprint = meanFingerprint(fingerprints);
+            
+            // use it as the fingerprint
+            Platform.runLater(() -> setFingerprint(serializeFingerprint(fingerprint)));
         });
         imageThread.setDaemon(true);
         imageThread.start();
@@ -322,6 +337,66 @@ public class DetailController extends PaneController {
     
     private void setFingerprint(String fingerprint) {
         record.setFingerprint(fingerprint);
+    }
+    
+    private String serializeFingerprint(double[] fingerprint) {
+        // map from [-1, 1] to [-2^15, 2^15 - 1]
+        byte[] packed = new byte[256];
+        final double scale = 32767.999999999996;
+        for (int i = 0; i < 128; i++) {
+            int mapped = (int) Math.floor(scale * fingerprint[i]);
+            packed[2*i  ] = (byte) (mapped);
+            packed[2*i+1] = (byte) (mapped>>8);
+        }
+        return Base64.getEncoder().encodeToString(packed);
+    }
+    
+    private double[] meanFingerprint(List<double[]> fingerprints) {
+        double[] result = new double[128];
+        int n = fingerprints.size();
+        if(n==0)return result;
+        for (double[] f : fingerprints) {
+            for (int j = 0; j < 128; ++j) {
+                result[j] += f[j];
+            }
+        }
+        for(int j=0;j<128;++j){
+            result[j] /= n;
+        }
+        return result;
+    }
+    
+    private boolean tooMuchUncertainty(List<double[]> fingerprints) {
+        if (okUncertaintyPartial(fingerprints)) return false;
+        int n = fingerprints.size();
+        for (int i=0;i<n;++i) {
+            List<double[]> cut = new ArrayList<>(fingerprints);
+            cut.remove(i);
+            if (okUncertaintyPartial(cut)) return false;
+        }
+        return true;
+    }
+    
+    private boolean okUncertaintyPartial(List<double[]> fingerprints) {
+        double variance = 0;
+        int n = fingerprints.size();
+        for(int j=0;j<128;++j) {
+            double sum = 0;
+            double sumsq = 0;
+            for (double[] fingerprint : fingerprints) {
+                double v = fingerprint[j];
+                sum += v;
+                sumsq += v * v;
+            }
+            sum /= n;
+            sumsq /= n;
+            sum = sum * sum;
+            double contrib = sumsq - sum;
+            variance += contrib;
+        }
+        System.out.println("variance = " + variance);
+        double bound = 0.01 + 0.001 * n;
+        return variance <= bound;
     }
     
 }
