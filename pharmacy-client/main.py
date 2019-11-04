@@ -54,6 +54,12 @@ motor_step_delay = 0.002
 # local drug database
 din_to_motor = {}
 
+def as_din(s):
+    """
+    Coerce a DIN to the 8 digit string format.
+    """
+    return format(s, '>08')
+
 def setup_pins():
     """
     Gets GPIO and the pins ready for use
@@ -303,6 +309,7 @@ async def main_step(capture):
             for pres in data['prescriptions']:
                 # get the DIN of the drug
                 din = pres['din']
+                din = as_din(din)
 
                 # is this drug in this pharmacy?
                 if din in din_to_motor:
@@ -363,6 +370,7 @@ def main():
     with open('din.cfg','r') as file:
         for line in file:
                 din, turns, *motor_pins = line.strip().split()
+                din = as_din(din)
                 turns = float(turns)
                 motor_pins = tuple(map(int, motor_pins))
                 din_to_motor[din] = turns, *motor_pins
