@@ -4,6 +4,8 @@
 
 <SplitPane xmlns="http://javafx.com/javafx"
            xmlns:fx="http://javafx.com/fxml"
+           stylesheets="@main.css"
+           fx:id="rootNode"
            fx:controller="ca.uwaterloo.arka.pharmacy.MainController"
            dividerPositions="0.3"
            prefHeight="600.0" prefWidth="1200.0">

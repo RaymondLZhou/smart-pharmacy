@@ -3,10 +3,10 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-<!-- TODO styling -->
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      prefHeight="40.0" prefWidth="0.0">
+      stylesheets="@main.css"
+      prefHeight="40.0" prefWidth="Infinity">
     <Text fx:id="patientNameText" />
     <Text fx:id="doctorsNamesText" />
 </VBox>
