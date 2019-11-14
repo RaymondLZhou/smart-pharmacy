@@ -24,7 +24,7 @@ import face_recognition
 import aiohttp
 
 # constant: endpoint for the web API
-api_endpoint = 'https://smart-pharmacy-f818a.firebaseio.com/arka'
+api_endpoint = 'https://us-central1-smart-pharmacy-f818a.cloudfunctions.net'
 # constant: current api version
 api_version = '0'
 # constant: safety factor for the multiple face selector algorithm
@@ -53,6 +53,12 @@ motor_step_delay = 0.002
 
 # local drug database
 din_to_motor = {}
+
+def to_bytes_directly(s):
+    return bytes(map(ord,s))
+
+def from_bytes_directly(s):
+    return ''.join(map(chr,s))
 
 def as_din(s):
     """
@@ -127,8 +133,7 @@ async def report_dispensed(auth_token, drugs_dispensed):
 
     # if nothing was dispensed, easy
     if not drugs_dispensed:
-        logging.log(logging.INFO, 'No drug dispensing to report')
-        return True
+        logging.log(logging.INFO, 'No drug dispensing, will report anyway')
 
     logging.log(logging.DEBUG, 'Now trying to report drug dispensed')
 
@@ -151,7 +156,7 @@ async def report_dispensed(auth_token, drugs_dispensed):
 
             # connect to the api!
             async with session.get(
-                api_endpoint + '/user/pharmacy_done',
+                api_endpoint + '/pharmacy_done',
                 json = data_send
                 ) as response:
 
@@ -269,7 +274,7 @@ async def main_step(capture):
         # build the json object to send
         data_send = {
             'version': api_version,
-            'fingerprint': base64.b64encode(packed_fingerprint)
+            'fingerprint': from_bytes_directly(base64.b64encode(packed_fingerprint))
             }
         # response is assumed none until we get something
         data_response = None
@@ -278,7 +283,7 @@ async def main_step(capture):
 
         # connect to the api!
         async with session.get(
-            api_endpoint + '/user/pharmacy_get',
+            api_endpoint + '/pharmacy_get',
             json = data_send,
             timeout = timeout
             ) as response:
