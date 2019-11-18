@@ -5,10 +5,12 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
+<?import javafx.scene.layout.ColumnConstraints?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       stylesheets="@main.css"
@@ -16,45 +18,56 @@
       fx:id="detailPaneRoot"
       visible="false"
       prefHeight="Infinity" prefWidth="100000.0">
-    <ScrollPane VBox.vgrow="always">
-        <VBox>
-            <Label text="Patient Detail" /> <!-- Title -->
-            <HBox>
-                <Label text="Patient name:" />
-                <Text fx:id="nameText" />
-                <TextField fx:id="nameField" managed="false" visible="false" />
-            </HBox>
-            <HBox>
-                <Label text="Doctors:" />
-                <Text fx:id="doctorsText" />
-                <VBox fx:id="doctorsListContainer" managed="false" visible="false">
-                    <ListView fx:id="doctorsList" editable="true" prefHeight="0" />
-                    <HBox>
-                        <Button text="+" onAction="#addDoctor" />
-                        <Button text="-" onAction="#removeSelectedDoctor" />
-                    </HBox>
-                </VBox>
-            </HBox>
-            <HBox>
-                <Label text="Prescription IDs:" />
-                <Text fx:id="prescriptionIdText" />
-                <VBox fx:id="prescriptionIdListContainer" managed="false" visible="false">
-                    <ListView fx:id="prescriptionIdList" editable="true" prefHeight="0" />
-                    <HBox>
-                        <Button text="+" onAction="#addPrescription" />
-                        <Button text="-" onAction="#removeSelectedPrescription" />
-                    </HBox>
-                </VBox>
-            </HBox>
-            <HBox>
-                <Label text="Face recognition data:" />
-                <Text fx:id="faceFingerprintDataText" />
-                <Button fx:id="captureFaceFingerprintButton"
-                        text="Capture face recognition data"
-                        onAction="#captureFaceFingerprint"
-                        managed="false" visible="false" />
-            </HBox>
-        </VBox>
+    <ScrollPane fx:id="detailScrollPane" VBox.vgrow="always">
+        <GridPane fx:id="detailBox" hgap="8" vgap="10">
+            <!-- Title -->
+            <Label fx:id="detailTitle" text="Patient Detail"
+                   GridPane.columnIndex="0" GridPane.rowIndex="0" GridPane.columnSpan="2"
+                   GridPane.halignment="center" />
+            
+            <!-- Patient name field -->
+            <Label text="Patient name:" GridPane.rowIndex="1" GridPane.columnIndex="0"
+                   GridPane.halignment="right" GridPane.valignment="top" />
+            <Text fx:id="nameText" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+            <TextField fx:id="nameField" managed="false" visible="false"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1" />
+            
+            <!-- Doctors' names field -->
+            <Label text="Doctors:" GridPane.rowIndex="2" GridPane.columnIndex="0"
+                   GridPane.halignment="right" GridPane.valignment="top" />
+            <Text fx:id="doctorsText" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            <VBox fx:id="doctorsListContainer" managed="false" visible="false"
+                  GridPane.rowIndex="2" GridPane.columnIndex="1">
+                <ListView fx:id="doctorsList" editable="true" prefHeight="0" />
+                <HBox>
+                    <Button text="+" onAction="#addDoctor" />
+                    <Button text="-" onAction="#removeSelectedDoctor" />
+                </HBox>
+            </VBox>
+            
+            <!-- Prescription IDs field -->
+            <Label text="Prescription IDs:" GridPane.rowIndex="3" GridPane.columnIndex="0"
+                   GridPane.halignment="right" GridPane.valignment="top" />
+            <Text fx:id="prescriptionIdText" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+            <VBox fx:id="prescriptionIdListContainer" managed="false" visible="false"
+                  GridPane.rowIndex="3" GridPane.columnIndex="1">
+                <ListView fx:id="prescriptionIdList" editable="true" prefHeight="0" />
+                <HBox>
+                    <Button text="+" onAction="#addPrescription" />
+                    <Button text="-" onAction="#removeSelectedPrescription" />
+                </HBox>
+            </VBox>
+            
+            <!-- Face recognition data field -->
+            <Label text="Face recognition data:" GridPane.rowIndex="4" GridPane.columnIndex="0"
+                   GridPane.halignment="right" GridPane.valignment="top" />
+            <Text fx:id="faceFingerprintDataText" wrappingWidth="400" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+            <Button fx:id="captureFaceFingerprintButton"
+                    text="Capture face recognition data"
+                    onAction="#captureFaceFingerprint"
+                    managed="false" visible="false"
+                    GridPane.rowIndex="4" GridPane.columnIndex="1" />
+        </GridPane>
     </ScrollPane>
     <HBox VBox.vgrow="never">
         <Button fx:id="editBtn"

@@ -20,3 +20,14 @@
 #patientList {
     -fx-padding: 10 5 10 5;
 }
+
+/* Detail pane */
+
+#detailBox {
+    -fx-padding: 20 15 0 15;
+}
+
+#detailTitle {
+    -fx-padding: 0 0 20 0;
+    -fx-font-size: 1.5em;
+}

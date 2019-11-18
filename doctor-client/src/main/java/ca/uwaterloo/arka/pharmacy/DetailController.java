@@ -181,8 +181,8 @@ public class DetailController extends PaneController {
         doctorsText.setVisible(!edit);
         prescriptionIdText.setManaged(!edit);
         prescriptionIdText.setVisible(!edit);
-        captureFaceFingerprintButton.setManaged(!edit);
-        captureFaceFingerprintButton.setVisible(!edit);
+        faceFingerprintDataText.setManaged(!edit);
+        faceFingerprintDataText.setVisible(!edit);
         editBtn.setManaged(!edit);
         editBtn.setVisible(!edit);
         deleteBtn.setManaged(!edit);
