@@ -2,6 +2,7 @@ package ca.uwaterloo.arka.pharmacy;
 
 import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -13,8 +14,23 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.FrameGrabber;
+import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
+import org.bytedeco.opencv.opencv_core.IplImage;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
+
+import static org.bytedeco.opencv.helper.opencv_imgcodecs.cvSaveImage;
 
 /**
  * The controller class for the "detail" pane on the right side. Controls editing and saving records.
@@ -45,7 +61,8 @@ public class DetailController extends PaneController {
     @FXML private ListView<String> doctorsList;
     @FXML private Node prescriptionIdListContainer;
     @FXML private ListView<Integer> prescriptionIdList;
-    @FXML private TextField faceFingerprintDataField;
+    
+    @FXML private Button captureFaceFingerprintButton;
     
     private boolean editing = false;
     
@@ -110,7 +127,6 @@ public class DetailController extends PaneController {
         
         // copy the record stuff into the editing stuff
         nameField.setText(record.getName());
-        faceFingerprintDataField.setText(record.getFingerprint());
         doctorsList.getItems().clear();
         // TODO have a better doctor choosing UI
         doctorsList.getItems().addAll(record.getDoctors());
@@ -179,8 +195,8 @@ public class DetailController extends PaneController {
         doctorsListContainer.setVisible(edit);
         prescriptionIdListContainer.setManaged(edit);
         prescriptionIdListContainer.setVisible(edit);
-        faceFingerprintDataField.setManaged(edit);
-        faceFingerprintDataField.setVisible(edit);
+        captureFaceFingerprintButton.setManaged(edit);
+        captureFaceFingerprintButton.setVisible(edit);
         saveBtn.setManaged(edit);
         saveBtn.setVisible(edit);
         exitBtn.setManaged(edit);
@@ -217,7 +233,6 @@ public class DetailController extends PaneController {
         
         // update the record (and therefore the displaying stuff) with the editing data
         record.setName(nameField.getText());
-        record.setFingerprint(faceFingerprintDataField.getText());
         
         record.getDoctors().clear();
         for (String doctorName : doctorsList.getItems()) {
@@ -242,6 +257,146 @@ public class DetailController extends PaneController {
                     "retry publishing changes.");
             alert.show();
         });
+    }
+    
+    @FXML
+    private void captureFaceFingerprint() {
+        Thread imageThread = new Thread(() -> {
+            // new thread so it doesn't block the UI thread
+            FrameGrabber grabber = new OpenCVFrameGrabber(0);
+            OpenCVFrameConverter.ToIplImage converter = new OpenCVFrameConverter.ToIplImage();
+            List<double[]> fingerprints = new ArrayList<>();
+            while (fingerprints.size() <= 2 || tooMuchUncertainty(fingerprints)) {
+                try {
+                    grabber.start();
+                    Frame frame = grabber.grab();
+                    grabber.close();
+                    IplImage image = converter.convert(frame);
+
+                    // save to the temp directory for the python script to access
+                    String imgFilename = Paths.get(System.getProperty("java.io.tmpdir"), "face-fingerprint.png")
+                            .toString();
+                    System.out.println("[DetailController] Successfully got an image: saving to " + imgFilename);
+                    cvSaveImage(imgFilename, image);
+
+                    // execute the python script
+                    String pythonCommand = "python3 ./fingerprint.py " + imgFilename;
+                    Process pythonProcess = Runtime.getRuntime().exec(pythonCommand);
+
+                    // pipe error logging from python script to System.out
+                    InputStream pythonError = pythonProcess.getErrorStream();
+                    InputStreamReader isReader = new InputStreamReader(pythonError);
+                    BufferedReader reader = new BufferedReader(isReader);
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println("[fingerprint.py] " + line);
+                    }
+
+                    int exit = pythonProcess.waitFor();
+                    System.out.println("[DetailController] Python script exited with status " + exit);
+                    if (exit != 0) {
+                        // crap it failed
+                        Platform.runLater(() -> {
+                            Alert error = new Alert(Alert.AlertType.ERROR,
+                                    "Error: Failed to generate fingerprint data. Please ensure that a face is visible " +
+                                    "to the webcam, and that Python 3.7 or above is installed.");
+                            error.show();
+                        });
+                        return;
+                    }
+
+                    // get the fingerprint from the output
+                    InputStream pythonOutput = pythonProcess.getInputStream();
+                    Scanner scanner = new Scanner(pythonOutput);
+                    double[] fingerprint = new double[128];
+                    for (int i = 0; i < 128; i++) {
+                        fingerprint[i] = scanner.nextDouble();
+                    }
+                    scanner.close();
+
+                    fingerprints.add(fingerprint);
+                    
+                    System.out.println("number of fingerprints kept = " + fingerprints.size());
+                } catch (Exception e) {
+                    System.err.println("[DetailController] Could not get image from webcam");
+                    e.printStackTrace();
+                    Alert error = new Alert(Alert.AlertType.ERROR,
+                            "Could not get an image from a webcam. Please ensure that a webcam is plugged in and " +
+                            "this application has access to it, then try again.");
+                    error.show();
+                }
+            }
+            double[] fingerprint = meanFingerprint(fingerprints);
+            
+            // use it as the fingerprint
+            Platform.runLater(() -> setFingerprint(serializeFingerprint(fingerprint)));
+        });
+        imageThread.setDaemon(true);
+        imageThread.start();
+    }
+    
+    private void setFingerprint(String fingerprint) {
+        record.setFingerprint(fingerprint);
+    }
+    
+    private String serializeFingerprint(double[] fingerprint) {
+        // map from [-1, 1] to [-2^15, 2^15 - 1]
+        byte[] packed = new byte[256];
+        final double scale = 32767.999999999996;
+        for (int i = 0; i < 128; i++) {
+            int mapped = (int) Math.floor(scale * fingerprint[i]);
+            packed[2*i  ] = (byte) (mapped);
+            packed[2*i+1] = (byte) (mapped>>8);
+        }
+        return Base64.getEncoder().encodeToString(packed);
+    }
+    
+    private double[] meanFingerprint(List<double[]> fingerprints) {
+        double[] result = new double[128];
+        int n = fingerprints.size();
+        if(n==0)return result;
+        for (double[] f : fingerprints) {
+            for (int j = 0; j < 128; ++j) {
+                result[j] += f[j];
+            }
+        }
+        for(int j=0;j<128;++j){
+            result[j] /= n;
+        }
+        return result;
+    }
+    
+    private boolean tooMuchUncertainty(List<double[]> fingerprints) {
+        if (okUncertaintyPartial(fingerprints)) return false;
+        int n = fingerprints.size();
+        for (int i=0;i<n;++i) {
+            List<double[]> cut = new ArrayList<>(fingerprints);
+            cut.remove(i);
+            if (okUncertaintyPartial(cut)) return false;
+        }
+        return true;
+    }
+    
+    private boolean okUncertaintyPartial(List<double[]> fingerprints) {
+        double variance = 0;
+        int n = fingerprints.size();
+        for(int j=0;j<128;++j) {
+            double sum = 0;
+            double sumsq = 0;
+            for (double[] fingerprint : fingerprints) {
+                double v = fingerprint[j];
+                sum += v;
+                sumsq += v * v;
+            }
+            sum /= n;
+            sumsq /= n;
+            sum = sum * sum;
+            double contrib = sumsq - sum;
+            variance += contrib;
+        }
+        System.out.println("variance = " + variance);
+        double bound = 0.01 + 0.001 * n;
+        return variance <= bound;
     }
     
 }

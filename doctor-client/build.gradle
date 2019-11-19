@@ -11,6 +11,7 @@ repositories {
 dependencies {
     implementation 'com.google.firebase:firebase-admin:6.10.0'
     implementation 'org.slf4j:slf4j-simple:1.6.2'
+    implementation 'org.bytedeco:javacv-platform:1.5.1'
 }
 
 javafx {
