@@ -304,14 +304,14 @@ async def main_step(capture):
             logging.log(logging.INFO, 'Authenticated and prescription data acquired')
 
             # the authentication token for this session
-            auth_token = data['id']
+            auth_token = data_response['id']
             # make a list of drugs that were dispensed
             drugs_dispensed = []
 
             await asyncio.create_task(report_dispensed(auth_token, drugs_dispensed))
 
             # loop over all valid prescriptions
-            for pres in data['prescriptions']:
+            for pres in data_response['prescriptions']:
                 # get the DIN of the drug
                 din = pres['din']
                 din = as_din(din)
