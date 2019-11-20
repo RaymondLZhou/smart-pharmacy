@@ -161,7 +161,7 @@ async def report_dispensed(auth_token, drugs_dispensed):
                 ) as response:
 
                 # get data as json
-                data_response = response.json()
+                data_response = await response.json()
 
                 if data_response['version'] != api_version:
                     raise AssertionError('Incorrect API version encountered in report_dispensed')
