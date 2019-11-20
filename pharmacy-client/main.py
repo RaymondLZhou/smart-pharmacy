@@ -155,7 +155,7 @@ async def report_dispensed(auth_token, drugs_dispensed):
         while data_response is None:
 
             # connect to the api!
-            async with session.get(
+            async with session.post(
                 api_endpoint + '/pharmacy_done',
                 json = data_send
                 ) as response:
@@ -282,7 +282,7 @@ async def main_step(capture):
         timeout = aiohttp.ClientTimeout(total=10)
 
         # connect to the api!
-        async with session.get(
+        async with session.post(
             api_endpoint + '/pharmacy_get',
             json = data_send,
             timeout = timeout
