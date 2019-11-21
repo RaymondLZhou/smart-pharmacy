@@ -126,7 +126,7 @@ async def report_dispensed(auth_token, drugs_dispensed):
     Reports back to the server that drugs were dispensed... later
     """
     # get the timestamp NOW
-    ts = datetime.datetime.utcnow().timestamp()
+    ts = int(datetime.datetime.utcnow().timestamp())
 
     # wait until dispensing should be done
     await asyncio.sleep(30)
@@ -371,7 +371,7 @@ def main():
     global din_to_motor
 
     # we are seriously writing the logs somewhere
-    log_ts = datetime.datetime.utcnow().timestamp()
+    log_ts = int(datetime.datetime.utcnow().timestamp())
     log_fn = f'log_{log_ts}.txt'
     logging.basicConfig(filename=log_fn, level=logging.DEBUG)
 
