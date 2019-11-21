@@ -162,6 +162,7 @@ public class UserRecord {
                 ", prescriptions=" + getPrescriptionList().stream().map(PrescriptionRecord::toString)
                     .collect(Collectors.joining(", ")) +
                 ", fingerprint=" + getFingerprint() +
+                ", record=" + getRecord() +
                 '}';
     }
     
@@ -255,6 +256,7 @@ public class UserRecord {
         
         private List<Integer> dins;
         private long timestamp;
+        private String type;
         
         public List<Integer> getDins() {
             return dins;
@@ -272,23 +274,33 @@ public class UserRecord {
             this.timestamp = timestamp;
         }
         
+        public String getType() {
+            return type;
+        }
+        
+        public void setType(String type) {
+            this.type = type;
+        }
+        
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TransactionRecord that = (TransactionRecord) o;
             return timestamp == that.timestamp &&
-                    Objects.equals(dins, that.dins);
+                    Objects.equals(dins, that.dins) &&
+                    type.equals(that.type);
         }
         
         @Override
         public int hashCode() {
-            return Objects.hash(dins, timestamp);
+            return Objects.hash(dins, timestamp, type);
         }
         
         @Override
         public String toString() {
             return "TransactionRecord{" +
+                    "type=" + type +
                     "dins=" + dins +
                     ", timestamp=" + timestamp +
                     '}';
