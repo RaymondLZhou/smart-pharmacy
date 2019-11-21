@@ -362,19 +362,12 @@ async def main_async():
     # say bye bye
     logging.log(logging.WARNING, 'Exiting main function, program is ending | Current UTC time is ' + str(datetime.datetime.utcnow()))
 
-def main():
+def load_din_config():
     """
-    Entry point to the program.
-    Will first read in the local database from the config file.
-    Redirects to main_async.
+    Dedicated helper function to load in DIN/motor data from file din.cfg
     """
     global din_to_motor
-
-    # we are seriously writing the logs somewhere
-    log_ts = int(datetime.datetime.utcnow().timestamp())
-    log_fn = f'log_{log_ts}.txt'
-    logging.basicConfig(filename=log_fn, level=logging.DEBUG)
-
+    
     logging.log(logging.INFO, 'Loading configuration')
 
     with open('din.cfg','r') as file:
@@ -386,6 +379,20 @@ def main():
                 din_to_motor[din] = turns, *motor_pins
 
     logging.log(logging.INFO, 'Read {DIN:pins} mapping as ' + str(din_to_motor))
+
+def main():
+    """
+    Entry point to the program.
+    Will first read in the local database from the config file.
+    Redirects to main_async.
+    """
+    
+    # we are seriously writing the logs somewhere
+    log_ts = int(datetime.datetime.utcnow().timestamp())
+    log_fn = f'log_{log_ts}.txt'
+    logging.basicConfig(filename=log_fn, level=logging.DEBUG)
+
+    load_din_config()
 
     asyncio.run(main_async())
 
