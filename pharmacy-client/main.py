@@ -107,8 +107,9 @@ async def dispense(din):
             for on_off, pin in zip(step, pins):
                 gpio.output(pin, on_off)
             await asyncio.sleep(motor_step_delay)
-    except Exception as exc:
-        logging.log(logging.ERROR, exc)
+    except Exception as exc2:
+        exc = exc2
+        logging.log(logging.ERROR, exc2)
 
     logging.log(logging.INFO, 'Dispensing complete, now resetting pins ' + str(pins))
 
