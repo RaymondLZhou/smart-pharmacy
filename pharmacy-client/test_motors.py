@@ -41,7 +41,13 @@ def main():
 
     client.setup_pins()
 
-    asyncio.run(test_motors())
+    while True:
+        asyncio.run(test_motors())
+
+        logging.log(logging.INFO, 'Again? (enter a blank line to exit')
+
+        if not input():
+            break
 
 if __name__ == '__main__':
     main()

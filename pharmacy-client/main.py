@@ -74,7 +74,7 @@ def setup_pins():
     gpio.cleanup()
     gpio.setmode(gpio.BCM)
     # get specific pins ready
-    for motor in din_to_motor.values():
+    for turns, *motor in din_to_motor.values():
         for pin in motor:
             gpio.setup(pin, gpio.OUT)
             gpio.output(pin, False)
