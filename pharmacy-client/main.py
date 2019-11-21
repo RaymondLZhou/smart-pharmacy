@@ -13,6 +13,7 @@ import struct
 import asyncio
 import json
 import base64
+import itertools
 
 # pre-installed for the rapsberry pi
 import RPi.GPIO as gpio
