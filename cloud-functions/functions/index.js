@@ -5,6 +5,8 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 let db = admin.database();
 
+const MIN_TIME_BETWEEN_DISPENSES = 60;
+
 function base64ToFingerprint(base64) {
   // convert from base64 to buffer
   let fingerprintBuffer = Buffer.from(base64, 'base64');
@@ -63,16 +65,38 @@ exports.pharmacy_get = functions.https.onRequest(async (req, res) => {
       }
     }
     
-    console.log('Closest user has id ' + bestId + ' (' + users[bestId].name + ')');
+    console.log('Closest user has id ' + bestId + ' (' + users[bestId].name + '), allowing dispensing of their prescriptions');
+    
+    // find the prescriptions to dispense
+    let badDins = [];
+    let timestamp = Math.floor(Date.now() / 1000); // convert ms => s
+    for (let key in users[bestId].record) {
+      if (timestamp <= users[bestId].record[key].timestamp + MIN_TIME_BETWEEN_DISPENSES) {
+        // don't dispense these dins
+        badDins = badDins.concat(users[bestId].record[key].dins);
+      }
+    }
+    let prescriptions = Object.values(users[bestId].prescriptions);
+    prescriptions = prescriptions.filter(presc => timestamp <= presc.expires).filter(presc => !badDins.includes(presc.din));
     
     // construct response object
     let resObj = {
       "version": "0",
       "success": true,
       "id": 1234567890,
-      "prescriptions": Object.values(users[bestId].prescriptions)
+      "prescriptions": prescriptions
     };
     res.status(200).send(resObj).end();
+    
+    // add record of access - not *really* a problem if it fails
+    ref.child(bestId).child('record').push({ // push => generate random key
+      "dins": prescriptions.map(presc => presc.din),
+      "timestamp": timestamp
+    }, error => {
+      if (error) {
+        console.warn('Could not write record of access to user ' + bestId);
+      }
+    });
   }, err => {
     res.status(500).send(err).end();
   });
