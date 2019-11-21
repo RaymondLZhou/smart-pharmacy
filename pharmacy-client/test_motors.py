@@ -39,6 +39,8 @@ def main():
 
     client.load_din_config()
 
+    client.setup_pins()
+
     asyncio.run(test_motors())
 
 if __name__ == '__main__':
