@@ -18,12 +18,12 @@ async def test_motors():
     Tests each motor separately.
     """
 
-    for din in din_to_motor:
-        turns, *pins = din_to_motor[din]
+    for din in client.din_to_motor:
+        turns, *pins = client.din_to_motor[din]
 
         logging.log(logging.INFO, 'Now dispensing DIN ' + din + ' controlled by pins ' + str(pins) + ' doing ' + str(turns) + ' turns')
 
-        succeeded = await dispense(din)
+        succeeded = await client.dispense(din)
 
         logging.log(logging.INFO, 'Dispense reported ' + ('success' if succeeded else 'failure'))
 
