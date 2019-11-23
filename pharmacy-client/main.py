@@ -106,7 +106,7 @@ async def dispense(din):
             int(turns * motor_turn_repetitions * len(motor_pin_pattern))
             ):
             for on_off, pin in zip(step, pins):
-                on_off = bool(on_off)
+                on_off = bool(on_off) # coerce to a regular bool
                 gpio.output(pin, on_off)
             await asyncio.sleep(motor_step_delay)
     except Exception as exc2:
