@@ -43,7 +43,8 @@ motor_pin_pattern = np.array(
      [0, 1, 1, 0],
      [0, 0, 1, 1],
      [0, 0, 0, 1],
-     [0, 1, 0, 1]],
+     [0, 1, 0, 1],
+     [1, 0, 0, 1]],
     dtype=bool
      )
 # constant: number of repetitions of the motor pattern
@@ -105,6 +106,7 @@ async def dispense(din):
             int(turns * motor_turn_repetitions * len(motor_pin_pattern))
             ):
             for on_off, pin in zip(step, pins):
+                on_off = bool(on_off)
                 gpio.output(pin, on_off)
             await asyncio.sleep(motor_step_delay)
     except Exception as exc2:

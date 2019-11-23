@@ -18,7 +18,7 @@ async def test_motors():
     Tests each motor separately.
     """
 
-    for din in client.din_to_motor:
+    for din in sorted(client.din_to_motor):
         turns, *pins = client.din_to_motor[din]
 
         logging.log(logging.INFO, 'Now dispensing DIN ' + din + ' controlled by pins ' + str(pins) + ' doing ' + str(turns) + ' turns')
