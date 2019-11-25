@@ -5,12 +5,11 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
-
-<?import javafx.scene.layout.ColumnConstraints?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       stylesheets="@main.css"
@@ -62,11 +61,14 @@
             <Label text="Face recognition data:" GridPane.rowIndex="4" GridPane.columnIndex="0"
                    GridPane.halignment="right" GridPane.valignment="top" />
             <Text fx:id="faceFingerprintDataText" wrappingWidth="400" GridPane.rowIndex="4" GridPane.columnIndex="1" />
-            <Button fx:id="captureFaceFingerprintButton"
-                    text="Capture face recognition data"
-                    onAction="#captureFaceFingerprint"
-                    managed="false" visible="false"
-                    GridPane.rowIndex="4" GridPane.columnIndex="1" />
+            <VBox fx:id="captureFaceFingerprintBox" managed="false" visible="false"
+                  GridPane.rowIndex="4" GridPane.columnIndex="1" alignment="CENTER">
+                <Button fx:id="captureFaceFingerprintButton"
+                        text="Capture face recognition data"
+                        onAction="#captureFaceFingerprint" />
+                <Label fx:id="captureInstructions" alignment="CENTER" />
+                <ImageView fx:id="cameraView" preserveRatio="true" fitWidth="400" />
+            </VBox>
         </GridPane>
     </ScrollPane>
     <HBox VBox.vgrow="never">

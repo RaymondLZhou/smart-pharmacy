@@ -9,9 +9,12 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldListCell;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.text.Text;
 import javafx.util.converter.IntegerStringConverter;
 import org.bytedeco.javacv.Frame;
@@ -63,6 +66,9 @@ public class DetailController extends PaneController {
     @FXML private ListView<Integer> prescriptionIdList;
     
     @FXML private Button captureFaceFingerprintButton;
+    @FXML private Node captureFaceFingerprintBox;
+    @FXML private Label captureInstructions;
+    @FXML private ImageView cameraView;
     
     private boolean editing = false;
     
@@ -195,12 +201,15 @@ public class DetailController extends PaneController {
         doctorsListContainer.setVisible(edit);
         prescriptionIdListContainer.setManaged(edit);
         prescriptionIdListContainer.setVisible(edit);
-        captureFaceFingerprintButton.setManaged(edit);
-        captureFaceFingerprintButton.setVisible(edit);
+        captureFaceFingerprintBox.setManaged(edit);
+        captureFaceFingerprintBox.setVisible(edit);
         saveBtn.setManaged(edit);
         saveBtn.setVisible(edit);
         exitBtn.setManaged(edit);
         exitBtn.setVisible(edit);
+        
+        // clear the camera view - it's only for currently getting stuff
+        cameraView.setImage(null);
     }
     
     @FXML
@@ -261,28 +270,35 @@ public class DetailController extends PaneController {
     
     @FXML
     private void captureFaceFingerprint() {
+        // hide the button while we're capturing the fingerprint
+        captureFaceFingerprintButton.setManaged(false);
+        captureFaceFingerprintButton.setVisible(false);
+        updateInstructions("Capturing face fingerprint: please hold still...");
+        
         Thread imageThread = new Thread(() -> {
             // new thread so it doesn't block the UI thread
             FrameGrabber grabber = new OpenCVFrameGrabber(0);
             OpenCVFrameConverter.ToIplImage converter = new OpenCVFrameConverter.ToIplImage();
-            List<double[]> fingerprints = new ArrayList<>();
-            while (fingerprints.size() <= 2 || tooMuchUncertainty(fingerprints)) {
-                try {
-                    grabber.start();
+            try {
+                grabber.start();
+                List<double[]> fingerprints = new ArrayList<>();
+                while (fingerprints.size() <= 2 || tooMuchUncertainty(fingerprints)) {
                     Frame frame = grabber.grab();
-                    grabber.close();
                     IplImage image = converter.convert(frame);
-
+                    
                     // save to the temp directory for the python script to access
                     String imgFilename = Paths.get(System.getProperty("java.io.tmpdir"), "face-fingerprint.png")
                             .toString();
                     System.out.println("[DetailController] Successfully got an image: saving to " + imgFilename);
                     cvSaveImage(imgFilename, image);
-
+                    
+                    // display the user's pretty face
+                    cameraView.setImage(new Image("file://" + imgFilename));
+                    
                     // execute the python script
                     String pythonCommand = "python3 ./fingerprint.py " + imgFilename;
                     Process pythonProcess = Runtime.getRuntime().exec(pythonCommand);
-
+                    
                     // pipe error logging from python script to System.out
                     InputStream pythonError = pythonProcess.getErrorStream();
                     InputStreamReader isReader = new InputStreamReader(pythonError);
@@ -291,20 +307,21 @@ public class DetailController extends PaneController {
                     while ((line = reader.readLine()) != null) {
                         System.out.println("[fingerprint.py] " + line);
                     }
-
+                    
                     int exit = pythonProcess.waitFor();
                     System.out.println("[DetailController] Python script exited with status " + exit);
                     if (exit != 0) {
                         // crap it failed
                         Platform.runLater(() -> {
+                            updateInstructions("Failed to generate a fingerprint.");
                             Alert error = new Alert(Alert.AlertType.ERROR,
-                                    "Error: Failed to generate fingerprint data. Please ensure that a face is visible " +
-                                    "to the webcam, and that Python 3.7 or above is installed.");
+                                "Error: Failed to generate fingerprint data. Please ensure that a face is visible " +
+                                "to the webcam, and that Python 3.7 or above is installed.");
                             error.show();
                         });
                         return;
                     }
-
+                    
                     // get the fingerprint from the output
                     InputStream pythonOutput = pythonProcess.getInputStream();
                     Scanner scanner = new Scanner(pythonOutput);
@@ -313,26 +330,49 @@ public class DetailController extends PaneController {
                         fingerprint[i] = scanner.nextDouble();
                     }
                     scanner.close();
-
+                    
                     fingerprints.add(fingerprint);
                     
+                    Platform.runLater(() -> updateInstructions("Captured " + fingerprints.size()
+                            + " sample(s), please hold still..."));
                     System.out.println("number of fingerprints kept = " + fingerprints.size());
+                }
+                double[] fingerprint = meanFingerprint(fingerprints);
+                
+                // use it as the fingerprint
+                Platform.runLater(() -> {
+                    setFingerprint(serializeFingerprint(fingerprint));
+                    updateInstructions("Successfully generated face fingerprint, be sure to save.");
+                });
+            } catch (Exception e) {
+                System.err.println("[DetailController] Could not get image from webcam");
+                e.printStackTrace();
+                Platform.runLater(() -> updateInstructions("Error getting an image from webcam."));
+                Alert error = new Alert(Alert.AlertType.ERROR,
+                    "Could not get an image from a webcam. Please ensure that a webcam is plugged in and " +
+                    "this application has access to it, then try again.");
+                error.show();
+            } finally {
+                Platform.runLater(() -> {
+                    // always make it visible again
+                    captureFaceFingerprintButton.setManaged(true);
+                    captureFaceFingerprintButton.setVisible(true);
+                    cameraView.setImage(null);
+                });
+                try {
+                    grabber.stop();
                 } catch (Exception e) {
-                    System.err.println("[DetailController] Could not get image from webcam");
+                    System.err.println("[DetailController] Exception in stopping grabber");
                     e.printStackTrace();
-                    Alert error = new Alert(Alert.AlertType.ERROR,
-                            "Could not get an image from a webcam. Please ensure that a webcam is plugged in and " +
-                            "this application has access to it, then try again.");
-                    error.show();
                 }
             }
-            double[] fingerprint = meanFingerprint(fingerprints);
-            
-            // use it as the fingerprint
-            Platform.runLater(() -> setFingerprint(serializeFingerprint(fingerprint)));
         });
         imageThread.setDaemon(true);
         imageThread.start();
+    }
+    
+    private void updateInstructions(String instructions) {
+        captureInstructions.setText(instructions);
     }
     
     private void setFingerprint(String fingerprint) {
@@ -371,6 +411,7 @@ public class DetailController extends PaneController {
         int n = fingerprints.size();
         for (int i=0;i<n;++i) {
             List<double[]> cut = new ArrayList<>(fingerprints);
+            //noinspection SuspiciousListRemoveInLoop
             cut.remove(i);
             if (okUncertaintyPartial(cut)) return false;
         }
