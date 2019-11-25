@@ -16,7 +16,7 @@ dependencies {
 
 javafx {
     version = "13"
-    modules = [ 'javafx.controls', 'javafx.fxml' ]
+    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.swing' ]
 }
 
 mainClassName = 'ca.uwaterloo.arka.pharmacy.DoctorClient'

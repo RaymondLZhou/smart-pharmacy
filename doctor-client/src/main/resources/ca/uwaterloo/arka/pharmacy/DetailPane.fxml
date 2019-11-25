@@ -60,14 +60,15 @@
             <!-- Face recognition data field -->
             <Label text="Face recognition data:" GridPane.rowIndex="4" GridPane.columnIndex="0"
                    GridPane.halignment="right" GridPane.valignment="top" />
-            <Text fx:id="faceFingerprintDataText" wrappingWidth="400" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+            <ImageView fx:id="fingerprintVisual" preserveRatio="true" fitWidth="100" smooth="false"
+                       GridPane.rowIndex="4" GridPane.columnIndex="1" />
             <VBox fx:id="captureFaceFingerprintBox" managed="false" visible="false"
                   GridPane.rowIndex="4" GridPane.columnIndex="1" alignment="CENTER">
                 <Button fx:id="captureFaceFingerprintButton"
                         text="Capture face recognition data"
                         onAction="#captureFaceFingerprint" />
                 <Label fx:id="captureInstructions" alignment="CENTER" />
-                <ImageView fx:id="cameraView" preserveRatio="true" fitWidth="400" />
+                <ImageView fx:id="cameraView" preserveRatio="true" />
             </VBox>
         </GridPane>
     </ScrollPane>

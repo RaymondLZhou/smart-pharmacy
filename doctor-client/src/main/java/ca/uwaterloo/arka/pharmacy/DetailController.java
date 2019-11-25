@@ -4,6 +4,7 @@ import ca.uwaterloo.arka.pharmacy.db.UserDao;
 import ca.uwaterloo.arka.pharmacy.db.UserRecord;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
@@ -23,11 +24,14 @@ import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameGrabber;
 import org.bytedeco.opencv.opencv_core.IplImage;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
@@ -57,7 +61,7 @@ public class DetailController extends PaneController {
     @FXML private Text nameText;
     @FXML private Text doctorsText;
     @FXML private Text prescriptionIdText;
-    @FXML private Text faceFingerprintDataText;
+    @FXML private ImageView fingerprintVisual;
     
     @FXML private TextField nameField;
     @FXML private Node doctorsListContainer;
@@ -103,7 +107,6 @@ public class DetailController extends PaneController {
             nameText.textProperty().unbind();
             doctorsText.textProperty().unbind();
             prescriptionIdText.textProperty().unbind();
-            faceFingerprintDataText.textProperty().unbind();
         }
         
         this.record = record;
@@ -115,7 +118,9 @@ public class DetailController extends PaneController {
         
         // Bind all the fields
         nameText.textProperty().bind(record.nameProperty());
-        faceFingerprintDataText.textProperty().bind(record.fingerprintProperty());
+        fingerprintVisual.imageProperty().bind(Bindings.createObjectBinding(
+                () -> generateFaceFingerprintImage(deserializeFingerprint(record.getFingerprint())),
+                record.fingerprintProperty()));
         
         doctorsText.textProperty().bind(Bindings.createStringBinding(
                 () -> String.join(", ", record.getDoctors()), record.doctorsProperty()));
@@ -187,8 +192,8 @@ public class DetailController extends PaneController {
         doctorsText.setVisible(!edit);
         prescriptionIdText.setManaged(!edit);
         prescriptionIdText.setVisible(!edit);
-        faceFingerprintDataText.setManaged(!edit);
-        faceFingerprintDataText.setVisible(!edit);
+        fingerprintVisual.setManaged(!edit);
+        fingerprintVisual.setVisible(!edit);
         editBtn.setManaged(!edit);
         editBtn.setVisible(!edit);
         deleteBtn.setManaged(!edit);
@@ -210,6 +215,7 @@ public class DetailController extends PaneController {
         
         // clear the camera view - it's only for currently getting stuff
         cameraView.setImage(null);
+        cameraView.setFitWidth(400);
     }
     
     @FXML
@@ -313,6 +319,7 @@ public class DetailController extends PaneController {
                     if (exit != 0) {
                         // crap it failed
                         Platform.runLater(() -> {
+                            cameraView.setImage(null);
                             updateInstructions("Failed to generate a fingerprint.");
                             Alert error = new Alert(Alert.AlertType.ERROR,
                                 "Error: Failed to generate fingerprint data. Please ensure that a face is visible " +
@@ -341,7 +348,11 @@ public class DetailController extends PaneController {
                 
                 // use it as the fingerprint
                 Platform.runLater(() -> {
+                    System.out.println(Arrays.toString(fingerprint));
+                    System.out.println(Arrays.toString(deserializeFingerprint(serializeFingerprint(fingerprint))));
                     setFingerprint(serializeFingerprint(fingerprint));
+                    cameraView.setImage(generateFaceFingerprintImage(fingerprint));
+                    cameraView.setFitWidth(100);
                     updateInstructions("Successfully generated face fingerprint, be sure to save.");
                 });
             } catch (Exception e) {
@@ -357,7 +368,6 @@ public class DetailController extends PaneController {
                     // always make it visible again
                     captureFaceFingerprintButton.setManaged(true);
                     captureFaceFingerprintButton.setVisible(true);
-                    cameraView.setImage(null);
                 });
                 try {
                     grabber.stop();
@@ -389,6 +399,18 @@ public class DetailController extends PaneController {
             packed[2*i+1] = (byte) (mapped>>8);
         }
         return Base64.getEncoder().encodeToString(packed);
+    }
+    
+    private double[] deserializeFingerprint(String serialized) {
+        // map from [-2^15, 2^15 - 1] to [-1, 1]
+        byte[] packed = Base64.getDecoder().decode(serialized);
+        double[] res = new double[128];
+        final double scale = 32767.999999999996;
+        for (int i = 0; i < 128; i++) {
+            short bit16 = (short) ((int) packed[2*i] + ((int) packed[2*i+1]<<8));
+            res[i] = (double) bit16 / scale;
+        }
+        return res;
     }
     
     private double[] meanFingerprint(List<double[]> fingerprints) {
@@ -438,6 +460,28 @@ public class DetailController extends PaneController {
         System.out.println("variance = " + variance);
         double bound = 0.01 + 0.001 * n;
         return variance <= bound;
+    }
+    
+    private Image generateFaceFingerprintImage(double[] fingerprint) {
+        int scale = 16;
+        BufferedImage image = new BufferedImage(8*scale, 8*scale, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = (Graphics2D)image.getGraphics();
+        for (int i = 0; i < 64; i++) {
+            int x = i % 8;
+            int y = i / 8;
+            double u = fingerprint[2*i  ];
+            double v = fingerprint[2*i+1];
+            u = Math.tanh(u*10); // exaggerate extreme values
+            v = Math.tanh(v*10);
+            final double R = 0.3, G = 0.15, B = 0.5;
+            int r = (int) (127 + 127 * R * u);
+            int g = (int) (127 + 127 * G * v);
+            int b = (int) (127 + 127 * B * (-u-v));
+            System.out.println("RGB for " + x + ", " + y + ": " + r + ", " + g + ", " + b);
+            graphics.setColor(new Color(r, g, b));
+            graphics.fillRect(x*scale, y*scale, scale, scale);
+        }
+        return SwingFXUtils.toFXImage(image, null);
     }
     
 }
