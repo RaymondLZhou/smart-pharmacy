@@ -31,7 +31,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
@@ -348,8 +347,6 @@ public class DetailController extends PaneController {
                 
                 // use it as the fingerprint
                 Platform.runLater(() -> {
-                    System.out.println(Arrays.toString(fingerprint));
-                    System.out.println(Arrays.toString(deserializeFingerprint(serializeFingerprint(fingerprint))));
                     setFingerprint(serializeFingerprint(fingerprint));
                     cameraView.setImage(generateFaceFingerprintImage(fingerprint));
                     cameraView.setFitWidth(100);
@@ -416,13 +413,13 @@ public class DetailController extends PaneController {
     private double[] meanFingerprint(List<double[]> fingerprints) {
         double[] result = new double[128];
         int n = fingerprints.size();
-        if(n==0)return result;
+        if (n == 0) return result;
         for (double[] f : fingerprints) {
-            for (int j = 0; j < 128; ++j) {
+            for (int j = 0; j < 128; j++) {
                 result[j] += f[j];
             }
         }
-        for(int j=0;j<128;++j){
+        for(int j = 0; j < 128; j++){
             result[j] /= n;
         }
         return result;
@@ -443,7 +440,7 @@ public class DetailController extends PaneController {
     private boolean okUncertaintyPartial(List<double[]> fingerprints) {
         double variance = 0;
         int n = fingerprints.size();
-        for(int j=0;j<128;++j) {
+        for(int j = 0; j < 128; j++) {
             double sum = 0;
             double sumsq = 0;
             for (double[] fingerprint : fingerprints) {
@@ -457,7 +454,7 @@ public class DetailController extends PaneController {
             double contrib = sumsq - sum;
             variance += contrib;
         }
-        System.out.println("variance = " + variance);
+        System.out.println("[DetailController] variance = " + variance);
         double bound = 0.01 + 0.001 * n;
         return variance <= bound;
     }
@@ -477,7 +474,6 @@ public class DetailController extends PaneController {
             int r = (int) (127 + 127 * R * u);
             int g = (int) (127 + 127 * G * v);
             int b = (int) (127 + 127 * B * (-u-v));
-            System.out.println("RGB for " + x + ", " + y + ": " + r + ", " + g + ", " + b);
             graphics.setColor(new Color(r, g, b));
             graphics.fillRect(x*scale, y*scale, scale, scale);
         }

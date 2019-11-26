@@ -33,6 +33,7 @@ public class UserRecord {
     private StringProperty fingerprintProperty = new SimpleStringProperty();
     private MapProperty<String, TransactionRecord> transactionRecordProperty = new SimpleMapProperty<>();
     
+    @SuppressWarnings("unused")
     public UserRecord() {
         // No-arg constructor required for Firebase
         id = -1;
@@ -56,6 +57,7 @@ public class UserRecord {
         fingerprintProperty.set(fingerprint);
     }
     
+    @SuppressWarnings("unused")
     public int getId() {
         return id;
     }
@@ -76,11 +78,12 @@ public class UserRecord {
     public List<String> getDoctors() {
         return doctorsProperty.get();
     }
-
+    
+    @SuppressWarnings("unused")
     public void setDoctors(List<String> doctors) {
         doctorsProperty.set(FXCollections.observableList(doctors));
     }
-
+    
     public ListProperty<String> doctorsProperty() {
         return doctorsProperty;
     }
@@ -95,6 +98,7 @@ public class UserRecord {
     }
     
     /** To satisfy Firebase - prescriptions is technically a map */
+    @SuppressWarnings("unused")
     public Map<String, PrescriptionRecord> getPrescriptions() {
         Map<String, PrescriptionRecord> res = new HashMap<>();
         for (PrescriptionRecord prescription : getPrescriptionList()) {
@@ -104,6 +108,7 @@ public class UserRecord {
     }
     
     /** Also to satisfy Firebase */
+    @SuppressWarnings("unused")
     public void setPrescriptions(Map<String, PrescriptionRecord> map) {
         prescriptionsProperty.set(FXCollections.observableList(new ArrayList<>(map.values())));
     }
@@ -122,16 +127,14 @@ public class UserRecord {
     }
     
     // for firebase serialization - there's a record field in the DB
+    @SuppressWarnings("WeakerAccess")
     public Map<String, TransactionRecord> getRecord() {
         return transactionRecordProperty.get();
     }
-    
+
+    @SuppressWarnings("unused")
     public void setRecord(Map<String, TransactionRecord> record) {
         transactionRecordProperty.set(FXCollections.observableMap(record));
-    }
-    
-    public MapProperty<String, TransactionRecord> transactionRecordProperty() {
-        return transactionRecordProperty;
     }
     
     @Override
@@ -169,6 +172,7 @@ public class UserRecord {
     /**
      * A POJO representing each prescription in the "prescriptions" field in the DB docs. Immutable.
      */
+    @SuppressWarnings("unused")
     public static class PrescriptionRecord {
         
         private int din;
@@ -252,6 +256,7 @@ public class UserRecord {
     }
     
     // POJO to make Firebase happy, we don't use it but whatever we need it for Firebase
+    @SuppressWarnings("unused")
     public static class TransactionRecord {
         
         private List<Integer> dins;

@@ -3,7 +3,7 @@ package ca.uwaterloo.arka.pharmacy;
 /**
  * The superclass of DetailController and ListController. Exists to facilitate interactions between the two.
  */
-public class PaneController {
+class PaneController {
     
     private ListController listController = null;
     private DetailController detailController = null;
@@ -13,11 +13,11 @@ public class PaneController {
         this.detailController = detailController;
     }
     
-    protected ListController getListController() {
+    ListController getListController() {
         return listController;
     }
     
-    protected DetailController getDetailController() {
+    DetailController getDetailController() {
         return detailController;
     }
     

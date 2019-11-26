@@ -14,16 +14,16 @@ import java.io.UncheckedIOException;
 /**
  * A custom component representing the patient cards displayed in the list box. Also the controller of that component.
  */
-public class PatientCard extends Pane {
+class PatientCard extends Pane {
     
     private Node view;
     
     private UserRecord record;
     
-    @FXML private Text patientNameText;
-    @FXML private Text doctorsNamesText;
+    @SuppressWarnings("unused") @FXML private Text patientNameText;
+    @SuppressWarnings("unused") @FXML private Text doctorsNamesText;
     
-    public PatientCard(UserRecord record) {
+    PatientCard(UserRecord record) {
         if (record == null) throw new NullPointerException("cannot have null record");
         this.record = record;
         
@@ -37,7 +37,8 @@ public class PatientCard extends Pane {
             throw new UncheckedIOException(e);
         }
     }
-    
+
+    @SuppressWarnings("unused")
     @FXML
     public void initialize() {
         patientNameText.textProperty().bind(record.nameProperty());
@@ -45,11 +46,11 @@ public class PatientCard extends Pane {
                 () -> String.join(", ", record.getDoctors()), record.doctorsProperty()));
     }
     
-    public UserRecord getRecord() {
+    UserRecord getRecord() {
         return record;
     }
     
-    public Node getView() {
+    Node getView() {
         return view;
     }
     

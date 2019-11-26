@@ -13,8 +13,8 @@ public class MainController {
     @FXML private Node rootNode;
     
     // Controller classes for the two panes
-    @FXML private ListController listPaneController;
-    @FXML private DetailController detailPaneController;
+    @SuppressWarnings("unused") @FXML private ListController listPaneController;
+    @SuppressWarnings("unused") @FXML private DetailController detailPaneController;
     
     @FXML
     private void initialize() {
