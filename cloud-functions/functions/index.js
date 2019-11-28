@@ -177,12 +177,3 @@ exports.pharmacy_done = functions.https.onRequest((req, res) => {
     res.status(500).send(err).end();
   });
 });
-
-/** DEBUG - gets the whole database. Possibly the worst possible function to have in production. */
-exports.entire_database = functions.https.onRequest((_, res) => {
-  db.ref('arka').once('value', data => {
-    res.status(200).send(JSON.stringify(data.val()));
-  }, err => {
-    res.status(500).send(err);
-  });
-});
