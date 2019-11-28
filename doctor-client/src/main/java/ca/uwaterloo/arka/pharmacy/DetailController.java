@@ -118,7 +118,8 @@ public class DetailController extends PaneController {
         // Bind all the fields
         nameText.textProperty().bind(record.nameProperty());
         fingerprintVisual.imageProperty().bind(Bindings.createObjectBinding(
-                () -> generateFaceFingerprintImage(deserializeFingerprint(record.getFingerprint())),
+                () -> (record.getFingerprint() == null || record.getFingerprint().length() < 10) // real is >10 chars 
+                        ? null : generateFaceFingerprintImage(deserializeFingerprint(record.getFingerprint())),
                 record.fingerprintProperty()));
         
         doctorsText.textProperty().bind(Bindings.createStringBinding(
